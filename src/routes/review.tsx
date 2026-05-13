@@ -139,10 +139,15 @@ function ReviewPage() {
             </div>
             <div>
               <p className="font-display text-base font-bold text-brand">
-                Ready when both PDFs are attached
+                {stage === "extracting"
+                  ? "Reading your PDFs…"
+                  : stage === "reviewing"
+                    ? "AI is reviewing the application against the guideline…"
+                    : "Ready when both PDFs are attached"}
               </p>
               <p className="text-sm text-muted-foreground">
-                Files stay in your browser — nothing is uploaded in this preview.
+                We extract text from each PDF, find the application form section in your
+                guideline, and check the application against it.
               </p>
             </div>
           </div>
@@ -153,13 +158,21 @@ function ReviewPage() {
           >
             {running ? (
               <>
-                <Loader2 className="size-4 animate-spin" /> Reviewing…
+                <Loader2 className="size-4 animate-spin" />{" "}
+                {stage === "extracting" ? "Reading PDFs…" : "Reviewing…"}
               </>
             ) : (
               <>Run review</>
             )}
           </button>
         </div>
+
+        {error && (
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
 
         {result && <ResultPanel result={result} />}
       </main>
