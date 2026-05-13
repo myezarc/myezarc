@@ -306,6 +306,8 @@ function ResultPanel({ result }: { result: ReviewResult }) {
             </li>
           ))}
         </ul>
+
+        <HomeownerMessage message={result.homeownerMessage} />
       </div>
     </section>
   );
