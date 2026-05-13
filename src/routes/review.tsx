@@ -29,6 +29,7 @@ type ReviewResult = {
   decision: "approved" | "conditional" | "rejected";
   summary: string;
   findings: { rule: string; status: "pass" | "warn" | "fail"; note: string }[];
+  homeownerMessage: string;
 };
 
 function ReviewPage() {
@@ -71,6 +72,8 @@ function ReviewPage() {
             note: "Missing signed neighbor acknowledgement form referenced in section 7.1.",
           },
         ],
+        homeownerMessage:
+          "Hi neighbor — thanks so much for sending in your application! You're really close to a full approval. To get this across the finish line, we'd ask for two small updates: (1) please trim the proposed fence height down by 2 inches so it lands at the 6' maximum allowed in section 4.5, or share an updated surveyor sketch confirming the actual height; and (2) please attach the signed Neighbor Acknowledgement Form (one signature from each adjoining property) referenced in section 7.1 — there's a blank copy on the community portal. Once we have those, the committee can finalize your approval at the next meeting. Please reach out any time if you'd like a hand with the form, and thanks again for keeping the neighborhood looking great!",
       });
       setRunning(false);
     }, 1400);
