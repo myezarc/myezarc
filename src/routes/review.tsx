@@ -226,8 +226,13 @@ function UploadCard({
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
       const f = files[0];
-      if (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) {
-        alert("Please upload a PDF file.");
+      const isPdf =
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+      const isImage =
+        IMAGE_TYPES.includes(f.type) ||
+        /\.(png|jpe?g|webp)$/i.test(f.name);
+      if (!isPdf && !isImage) {
+        alert("Please upload a PDF or an image (PNG, JPG, WEBP).");
         return;
       }
       if (f.size > 20 * 1024 * 1024) {
