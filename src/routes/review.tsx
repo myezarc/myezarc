@@ -1,18 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
-  Copy,
   Check,
+  CheckCircle2,
+  ClipboardList,
+  Copy,
   FileText,
   Loader2,
   MessageSquareHeart,
   Sparkles,
   UploadCloud,
   X,
-  AlertTriangle,
 } from "lucide-react";
+import { extractPdfText } from "@/lib/pdf-extract";
+import { runArcReview, type ReviewResult } from "@/lib/arc-review.functions";
 
 export const Route = createFileRoute("/review")({
   head: () => ({
@@ -21,65 +25,60 @@ export const Route = createFileRoute("/review")({
       {
         name: "description",
         content:
-          "Upload your HOA architectural guideline PDF and a homeowner's application PDF to generate an instant review.",
+          "Upload your HOA architectural guideline PDF and a homeowner's application PDF to generate an instant AI-assisted review.",
       },
     ],
   }),
   component: ReviewPage,
 });
 
-type ReviewResult = {
-  decision: "approved" | "conditional" | "rejected";
-  summary: string;
-  findings: { rule: string; status: "pass" | "warn" | "fail"; note: string }[];
-  homeownerMessage: string;
-};
-
 function ReviewPage() {
   const [guideline, setGuideline] = useState<File | null>(null);
   const [application, setApplication] = useState<File | null>(null);
-  const [running, setRunning] = useState(false);
+  const [stage, setStage] = useState<"idle" | "extracting" | "reviewing">("idle");
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
 
-  const canRun = guideline && application && !running;
+  const reviewFn = useServerFn(runArcReview);
+  const running = stage !== "idle";
+  const canRun = !!guideline && !!application && !running;
 
-  const runReview = () => {
-    if (!canRun) return;
-    setRunning(true);
+  const runReview = async () => {
+    if (!canRun || !guideline || !application) return;
+    setError(null);
     setResult(null);
-    // Mock review — UI only
-    window.setTimeout(() => {
-      setResult({
-        decision: "conditional",
-        summary:
-          "The application largely conforms to the community guidelines. Two items require committee clarification before final approval.",
-        findings: [
-          {
-            rule: "Exterior paint color palette",
-            status: "pass",
-            note: "Selected color matches the approved earth-tone palette in section 4.2.",
-          },
-          {
-            rule: "Fence height & material",
-            status: "warn",
-            note: "Proposed 6'2\" exceeds the 6' maximum by 2 inches — confirm with surveyor.",
-          },
-          {
-            rule: "Setback from rear property line",
-            status: "pass",
-            note: "10 ft setback meets the minimum requirement of 8 ft.",
-          },
-          {
-            rule: "Required documentation",
-            status: "fail",
-            note: "Missing signed neighbor acknowledgement form referenced in section 7.1.",
-          },
-        ],
-        homeownerMessage:
-          "Hi neighbor — thanks so much for sending in your application! You're really close to a full approval. To get this across the finish line, we'd ask for two small updates: (1) please trim the proposed fence height down by 2 inches so it lands at the 6' maximum allowed in section 4.5, or share an updated surveyor sketch confirming the actual height; and (2) please attach the signed Neighbor Acknowledgement Form (one signature from each adjoining property) referenced in section 7.1 — there's a blank copy on the community portal. Once we have those, the committee can finalize your approval at the next meeting. Please reach out any time if you'd like a hand with the form, and thanks again for keeping the neighborhood looking great!",
+    try {
+      setStage("extracting");
+      const [guidelineText, applicationText] = await Promise.all([
+        extractPdfText(guideline),
+        extractPdfText(application),
+      ]);
+
+      if (guidelineText.length < 50) {
+        throw new Error(
+          "Couldn't read text from the guideline PDF. Is it a scanned image? Try a text-based PDF.",
+        );
+      }
+      if (applicationText.length < 20) {
+        throw new Error(
+          "Couldn't read text from the application PDF. Is it a scanned image? Try a text-based PDF.",
+        );
+      }
+
+      setStage("reviewing");
+      const r = await reviewFn({
+        data: {
+          guidelineText: guidelineText.slice(0, 380_000),
+          applicationText: applicationText.slice(0, 380_000),
+        },
       });
-      setRunning(false);
-    }, 1400);
+      setResult(r);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setError(msg);
+    } finally {
+      setStage("idle");
+    }
   };
 
   return (
@@ -140,10 +139,15 @@ function ReviewPage() {
             </div>
             <div>
               <p className="font-display text-base font-bold text-brand">
-                Ready when both PDFs are attached
+                {stage === "extracting"
+                  ? "Reading your PDFs…"
+                  : stage === "reviewing"
+                    ? "AI is reviewing the application against the guideline…"
+                    : "Ready when both PDFs are attached"}
               </p>
               <p className="text-sm text-muted-foreground">
-                Files stay in your browser — nothing is uploaded in this preview.
+                We extract text from each PDF, find the application form section in your
+                guideline, and check the application against it.
               </p>
             </div>
           </div>
@@ -154,13 +158,21 @@ function ReviewPage() {
           >
             {running ? (
               <>
-                <Loader2 className="size-4 animate-spin" /> Reviewing…
+                <Loader2 className="size-4 animate-spin" />{" "}
+                {stage === "extracting" ? "Reading PDFs…" : "Reviewing…"}
               </>
             ) : (
               <>Run review</>
             )}
           </button>
         </div>
+
+        {error && (
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
 
         {result && <ResultPanel result={result} />}
       </main>
@@ -298,21 +310,70 @@ function ResultPanel({ result }: { result: ReviewResult }) {
       <div className="space-y-6 p-6">
         <p className="text-base leading-relaxed text-foreground">{result.summary}</p>
 
-        <ul className="divide-y divide-border rounded-xl border border-border">
-          {result.findings.map((f, i) => (
-            <li key={i} className="flex items-start gap-4 p-4">
-              <FindingIcon status={f.status} />
-              <div className="min-w-0">
-                <p className="font-semibold text-brand">{f.rule}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{f.note}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <FormSectionPanel form={result.formSection} />
+
+        <div>
+          <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Findings
+          </h3>
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {result.findings.map((f, i) => (
+              <li key={i} className="flex items-start gap-4 p-4">
+                <FindingIcon status={f.status} />
+                <div className="min-w-0">
+                  <p className="font-semibold text-brand">{f.rule}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{f.note}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <HomeownerMessage message={result.homeownerMessage} />
       </div>
     </section>
+  );
+}
+
+function FormSectionPanel({ form }: { form: ReviewResult["formSection"] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/5 text-brand">
+          <ClipboardList className="size-5" />
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            Application form found in the guideline
+          </p>
+          <h3 className="mt-1 font-display text-lg font-bold text-brand">
+            {form.found ? form.sectionTitle || "Application Form" : "No form section detected"}
+          </h3>
+          {form.locationHint && (
+            <p className="mt-1 text-xs text-muted-foreground">Location: {form.locationHint}</p>
+          )}
+        </div>
+      </div>
+
+      {form.found && form.requiredFields.length > 0 ? (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {form.requiredFields.map((f, i) => (
+            <li
+              key={i}
+              className="rounded-lg border border-border bg-background p-3 text-sm"
+            >
+              <p className="font-semibold text-brand">{f.name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{f.description}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          The guideline didn't include an explicit application-form section, so the
+          review below is based on substantive rules only.
+        </p>
+      )}
+    </div>
   );
 }
 
