@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
-  ClipboardList,
   Copy,
   FileText,
   Loader2,
