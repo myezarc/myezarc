@@ -3,8 +3,11 @@ import { useCallback, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  Copy,
+  Check,
   FileText,
   Loader2,
+  MessageSquareHeart,
   Sparkles,
   UploadCloud,
   X,
@@ -29,6 +32,7 @@ type ReviewResult = {
   decision: "approved" | "conditional" | "rejected";
   summary: string;
   findings: { rule: string; status: "pass" | "warn" | "fail"; note: string }[];
+  homeownerMessage: string;
 };
 
 function ReviewPage() {
@@ -71,6 +75,8 @@ function ReviewPage() {
             note: "Missing signed neighbor acknowledgement form referenced in section 7.1.",
           },
         ],
+        homeownerMessage:
+          "Hi neighbor — thanks so much for sending in your application! You're really close to a full approval. To get this across the finish line, we'd ask for two small updates: (1) please trim the proposed fence height down by 2 inches so it lands at the 6' maximum allowed in section 4.5, or share an updated surveyor sketch confirming the actual height; and (2) please attach the signed Neighbor Acknowledgement Form (one signature from each adjoining property) referenced in section 7.1 — there's a blank copy on the community portal. Once we have those, the committee can finalize your approval at the next meeting. Please reach out any time if you'd like a hand with the form, and thanks again for keeping the neighborhood looking great!",
       });
       setRunning(false);
     }, 1400);
@@ -303,6 +309,8 @@ function ResultPanel({ result }: { result: ReviewResult }) {
             </li>
           ))}
         </ul>
+
+        <HomeownerMessage message={result.homeownerMessage} />
       </div>
     </section>
   );
@@ -324,6 +332,57 @@ function FindingIcon({ status }: { status: "pass" | "warn" | "fail" }) {
   return (
     <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-red-100 text-red-600">
       <X className="size-5" />
+    </div>
+  );
+}
+
+function HomeownerMessage({ message }: { message: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-accent/20 bg-accent/5 p-6">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+            <MessageSquareHeart className="size-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+              Message to homeowner
+            </p>
+            <h3 className="mt-1 font-display text-lg font-bold text-brand">
+              Neighbor-friendly next steps
+            </h3>
+          </div>
+        </div>
+        <button
+          onClick={copy}
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-brand transition-colors hover:bg-surface"
+        >
+          {copied ? (
+            <>
+              <Check className="size-4 text-emerald-600" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="size-4" /> Copy
+            </>
+          )}
+        </button>
+      </div>
+      <p className="whitespace-pre-line text-base leading-relaxed text-foreground">
+        {message}
+      </p>
     </div>
   );
 }
