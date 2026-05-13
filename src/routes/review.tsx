@@ -21,9 +21,13 @@ import { ocrImages } from "@/lib/ocr.functions";
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
+type OcrFn = (args: {
+  data: { images: string[]; label?: string };
+}) => Promise<{ text: string }>;
+
 async function extractTextFromFile(
   file: File,
-  ocr: ReturnType<typeof useServerFn<typeof ocrImages>>,
+  ocr: OcrFn,
   label: string,
 ): Promise<string> {
   const isPdf =
