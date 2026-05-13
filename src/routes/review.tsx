@@ -125,8 +125,8 @@ function ReviewPage() {
     try {
       const r = await reviewFn({
         data: {
-          guidelineText: guidelineText.slice(0, 380_000),
-          applicationText: applicationText.slice(0, 380_000),
+          guidelineText: guidelineText.slice(0, 120_000),
+          applicationText: applicationText.slice(0, 120_000),
         },
       });
       setResult(r);
