@@ -107,6 +107,37 @@ function ReviewPage() {
   const running = stage !== "idle";
   const canRun = !!guideline && !!application && !running;
 
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false);
+  const pendingTexts = useRef<{ guidelineText: string; applicationText: string } | null>(null);
+
+  const extractEmailFromText = (text: string): string => {
+    const match = text.match(
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+    );
+    return match ? match[0] : "";
+  };
+
+  const finishReview = async (
+    guidelineText: string,
+    applicationText: string,
+  ) => {
+    setStage("reviewing");
+    try {
+      const r = await reviewFn({
+        data: {
+          guidelineText: guidelineText.slice(0, 380_000),
+          applicationText: applicationText.slice(0, 380_000),
+        },
+      });
+      setResult(r);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setError(msg);
+    } finally {
+      setStage("idle");
+    }
+  };
+
   const runReview = async () => {
     if (!canRun || !guideline || !application) return;
     setError(null);
@@ -133,20 +164,33 @@ function ReviewPage() {
         );
       }
 
-      setStage("reviewing");
-      const r = await reviewFn({
-        data: {
-          guidelineText: guidelineText.slice(0, 380_000),
-          applicationText: applicationText.slice(0, 380_000),
-        },
-      });
-      setResult(r);
+      if (!homeownerEmail.trim()) {
+        const found = extractEmailFromText(applicationText);
+        if (found) {
+          setHomeownerEmail(found);
+        } else {
+          pendingTexts.current = { guidelineText, applicationText };
+          setStage("idle");
+          setEmailPromptOpen(true);
+          return;
+        }
+      }
+
+      await finishReview(guidelineText, applicationText);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       setError(msg);
-    } finally {
       setStage("idle");
     }
+  };
+
+  const submitEmailAndContinue = async (email: string) => {
+    setHomeownerEmail(email);
+    setEmailPromptOpen(false);
+    const texts = pendingTexts.current;
+    pendingTexts.current = null;
+    if (!texts) return;
+    await finishReview(texts.guidelineText, texts.applicationText);
   };
 
   return (
