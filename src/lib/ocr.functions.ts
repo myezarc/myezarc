@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const InputSchema = z.object({
-  // Array of data URLs (data:image/png;base64,...) — up to 8 images.
-  images: z.array(z.string().min(20).max(8_000_000)).min(1).max(8),
+  // Up to 10 images per call — chunk on the client for longer PDFs.
+  images: z.array(z.string().min(20).max(8_000_000)).min(1).max(10),
   label: z.string().max(120).optional(),
 });
 
