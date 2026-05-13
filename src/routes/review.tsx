@@ -98,6 +98,7 @@ export const Route = createFileRoute("/review")({
 function ReviewPage() {
   const [guideline, setGuideline] = useState<File | null>(null);
   const [application, setApplication] = useState<File | null>(null);
+  const [homeownerEmail, setHomeownerEmail] = useState("");
   const [stage, setStage] = useState<"idle" | "extracting" | "reviewing">("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
