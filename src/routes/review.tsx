@@ -1,18 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
-  CheckCircle2,
-  Copy,
   Check,
+  CheckCircle2,
+  ClipboardList,
+  Copy,
   FileText,
   Loader2,
   MessageSquareHeart,
   Sparkles,
   UploadCloud,
   X,
-  AlertTriangle,
 } from "lucide-react";
+import { extractPdfText } from "@/lib/pdf-extract";
+import { runArcReview, type ReviewResult } from "@/lib/arc-review.functions";
 
 export const Route = createFileRoute("/review")({
   head: () => ({
@@ -21,65 +25,60 @@ export const Route = createFileRoute("/review")({
       {
         name: "description",
         content:
-          "Upload your HOA architectural guideline PDF and a homeowner's application PDF to generate an instant review.",
+          "Upload your HOA architectural guideline PDF and a homeowner's application PDF to generate an instant AI-assisted review.",
       },
     ],
   }),
   component: ReviewPage,
 });
 
-type ReviewResult = {
-  decision: "approved" | "conditional" | "rejected";
-  summary: string;
-  findings: { rule: string; status: "pass" | "warn" | "fail"; note: string }[];
-  homeownerMessage: string;
-};
-
 function ReviewPage() {
   const [guideline, setGuideline] = useState<File | null>(null);
   const [application, setApplication] = useState<File | null>(null);
-  const [running, setRunning] = useState(false);
+  const [stage, setStage] = useState<"idle" | "extracting" | "reviewing">("idle");
+  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
 
-  const canRun = guideline && application && !running;
+  const reviewFn = useServerFn(runArcReview);
+  const running = stage !== "idle";
+  const canRun = !!guideline && !!application && !running;
 
-  const runReview = () => {
-    if (!canRun) return;
-    setRunning(true);
+  const runReview = async () => {
+    if (!canRun || !guideline || !application) return;
+    setError(null);
     setResult(null);
-    // Mock review — UI only
-    window.setTimeout(() => {
-      setResult({
-        decision: "conditional",
-        summary:
-          "The application largely conforms to the community guidelines. Two items require committee clarification before final approval.",
-        findings: [
-          {
-            rule: "Exterior paint color palette",
-            status: "pass",
-            note: "Selected color matches the approved earth-tone palette in section 4.2.",
-          },
-          {
-            rule: "Fence height & material",
-            status: "warn",
-            note: "Proposed 6'2\" exceeds the 6' maximum by 2 inches — confirm with surveyor.",
-          },
-          {
-            rule: "Setback from rear property line",
-            status: "pass",
-            note: "10 ft setback meets the minimum requirement of 8 ft.",
-          },
-          {
-            rule: "Required documentation",
-            status: "fail",
-            note: "Missing signed neighbor acknowledgement form referenced in section 7.1.",
-          },
-        ],
-        homeownerMessage:
-          "Hi neighbor — thanks so much for sending in your application! You're really close to a full approval. To get this across the finish line, we'd ask for two small updates: (1) please trim the proposed fence height down by 2 inches so it lands at the 6' maximum allowed in section 4.5, or share an updated surveyor sketch confirming the actual height; and (2) please attach the signed Neighbor Acknowledgement Form (one signature from each adjoining property) referenced in section 7.1 — there's a blank copy on the community portal. Once we have those, the committee can finalize your approval at the next meeting. Please reach out any time if you'd like a hand with the form, and thanks again for keeping the neighborhood looking great!",
+    try {
+      setStage("extracting");
+      const [guidelineText, applicationText] = await Promise.all([
+        extractPdfText(guideline),
+        extractPdfText(application),
+      ]);
+
+      if (guidelineText.length < 50) {
+        throw new Error(
+          "Couldn't read text from the guideline PDF. Is it a scanned image? Try a text-based PDF.",
+        );
+      }
+      if (applicationText.length < 20) {
+        throw new Error(
+          "Couldn't read text from the application PDF. Is it a scanned image? Try a text-based PDF.",
+        );
+      }
+
+      setStage("reviewing");
+      const r = await reviewFn({
+        data: {
+          guidelineText: guidelineText.slice(0, 380_000),
+          applicationText: applicationText.slice(0, 380_000),
+        },
       });
-      setRunning(false);
-    }, 1400);
+      setResult(r);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setError(msg);
+    } finally {
+      setStage("idle");
+    }
   };
 
   return (
