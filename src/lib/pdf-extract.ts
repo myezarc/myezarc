@@ -90,7 +90,7 @@ export function isExtractedTextRich(text: string): boolean {
  */
 export async function renderPdfToImages(
   file: File,
-  maxPages = 6,
+  maxPages = 20,
   scale = 1.6,
 ): Promise<string[]> {
   const buffer = await file.arrayBuffer();
