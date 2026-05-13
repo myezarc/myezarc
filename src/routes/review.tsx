@@ -310,21 +310,70 @@ function ResultPanel({ result }: { result: ReviewResult }) {
       <div className="space-y-6 p-6">
         <p className="text-base leading-relaxed text-foreground">{result.summary}</p>
 
-        <ul className="divide-y divide-border rounded-xl border border-border">
-          {result.findings.map((f, i) => (
-            <li key={i} className="flex items-start gap-4 p-4">
-              <FindingIcon status={f.status} />
-              <div className="min-w-0">
-                <p className="font-semibold text-brand">{f.rule}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{f.note}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <FormSectionPanel form={result.formSection} />
+
+        <div>
+          <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Findings
+          </h3>
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {result.findings.map((f, i) => (
+              <li key={i} className="flex items-start gap-4 p-4">
+                <FindingIcon status={f.status} />
+                <div className="min-w-0">
+                  <p className="font-semibold text-brand">{f.rule}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{f.note}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <HomeownerMessage message={result.homeownerMessage} />
       </div>
     </section>
+  );
+}
+
+function FormSectionPanel({ form }: { form: ReviewResult["formSection"] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/5 text-brand">
+          <ClipboardList className="size-5" />
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            Application form found in the guideline
+          </p>
+          <h3 className="mt-1 font-display text-lg font-bold text-brand">
+            {form.found ? form.sectionTitle || "Application Form" : "No form section detected"}
+          </h3>
+          {form.locationHint && (
+            <p className="mt-1 text-xs text-muted-foreground">Location: {form.locationHint}</p>
+          )}
+        </div>
+      </div>
+
+      {form.found && form.requiredFields.length > 0 ? (
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {form.requiredFields.map((f, i) => (
+            <li
+              key={i}
+              className="rounded-lg border border-border bg-background p-3 text-sm"
+            >
+              <p className="font-semibold text-brand">{f.name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{f.description}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          The guideline didn't include an explicit application-form section, so the
+          review below is based on substantive rules only.
+        </p>
+      )}
+    </div>
   );
 }
 
