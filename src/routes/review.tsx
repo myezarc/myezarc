@@ -107,6 +107,37 @@ function ReviewPage() {
   const running = stage !== "idle";
   const canRun = !!guideline && !!application && !running;
 
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false);
+  const pendingTexts = useRef<{ guidelineText: string; applicationText: string } | null>(null);
+
+  const extractEmailFromText = (text: string): string => {
+    const match = text.match(
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+    );
+    return match ? match[0] : "";
+  };
+
+  const finishReview = async (
+    guidelineText: string,
+    applicationText: string,
+  ) => {
+    setStage("reviewing");
+    try {
+      const r = await reviewFn({
+        data: {
+          guidelineText: guidelineText.slice(0, 380_000),
+          applicationText: applicationText.slice(0, 380_000),
+        },
+      });
+      setResult(r);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setError(msg);
+    } finally {
+      setStage("idle");
+    }
+  };
+
   const runReview = async () => {
     if (!canRun || !guideline || !application) return;
     setError(null);
@@ -133,20 +164,33 @@ function ReviewPage() {
         );
       }
 
-      setStage("reviewing");
-      const r = await reviewFn({
-        data: {
-          guidelineText: guidelineText.slice(0, 380_000),
-          applicationText: applicationText.slice(0, 380_000),
-        },
-      });
-      setResult(r);
+      if (!homeownerEmail.trim()) {
+        const found = extractEmailFromText(applicationText);
+        if (found) {
+          setHomeownerEmail(found);
+        } else {
+          pendingTexts.current = { guidelineText, applicationText };
+          setStage("idle");
+          setEmailPromptOpen(true);
+          return;
+        }
+      }
+
+      await finishReview(guidelineText, applicationText);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong.";
       setError(msg);
-    } finally {
       setStage("idle");
     }
+  };
+
+  const submitEmailAndContinue = async (email: string) => {
+    setHomeownerEmail(email);
+    setEmailPromptOpen(false);
+    const texts = pendingTexts.current;
+    pendingTexts.current = null;
+    if (!texts) return;
+    await finishReview(texts.guidelineText, texts.applicationText);
   };
 
   return (
@@ -202,10 +246,10 @@ function ReviewPage() {
 
         <div className="mt-8 rounded-2xl border border-border bg-background p-6">
           <label htmlFor="homeowner-email" className="block font-display text-sm font-bold text-brand">
-            Homeowner email
+            Homeowner email <span className="font-normal text-muted-foreground">(optional)</span>
           </label>
           <p className="mt-1 text-xs text-muted-foreground">
-            We'll include this address at the top of the message to the homeowner so you can copy and send it.
+            We'll try to extract this from the application. If we can't find one, we'll ask before starting the review.
           </p>
           <input
             id="homeowner-email"
@@ -261,6 +305,83 @@ function ReviewPage() {
 
         {result && <ResultPanel result={result} homeownerEmail={homeownerEmail} />}
       </main>
+
+      {emailPromptOpen && (
+        <EmailPromptDialog
+          onCancel={() => {
+            setEmailPromptOpen(false);
+            pendingTexts.current = null;
+          }}
+          onSubmit={submitEmailAndContinue}
+        />
+      )}
+    </div>
+  );
+}
+
+function EmailPromptDialog({
+  onCancel,
+  onSubmit,
+}: {
+  onCancel: () => void;
+  onSubmit: (email: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = () => {
+    const trimmed = value.trim();
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+      setErr("Please enter a valid email address.");
+      return;
+    }
+    if (trimmed.length > 255) {
+      setErr("Email must be less than 255 characters.");
+      return;
+    }
+    onSubmit(trimmed);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-xl">
+        <h2 className="font-display text-xl font-bold text-brand">
+          Homeowner email needed
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          We couldn't find an email address in the application. Please enter the
+          homeowner's email so it can be added to the review message.
+        </p>
+        <input
+          type="email"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (err) setErr(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          placeholder="homeowner@example.com"
+          autoFocus
+          className="mt-4 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+        />
+        {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground transition-colors hover:opacity-90"
+          >
+            Continue review
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
