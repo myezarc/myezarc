@@ -38,6 +38,33 @@ export async function extractPdfText(file: File): Promise<string> {
       .map((it) => ("str" in it ? (it as { str: string }).str : ""))
       .join(" ");
     parts.push(`--- Page ${i} ---\n${pageText}`);
+
+    // Also pull text from annotations on this page (widget form values,
+    // FreeText / typewriter annotations, etc.).
+    try {
+      const annots = (await page.getAnnotations()) as Array<{
+        subtype?: string;
+        fieldName?: string;
+        fieldValue?: unknown;
+        contents?: string;
+        buttonValue?: unknown;
+      }>;
+      const annotLines: string[] = [];
+      for (const a of annots) {
+        const label = a.fieldName ?? a.subtype ?? "annotation";
+        const val =
+          (a.fieldValue != null && String(a.fieldValue).trim()) ||
+          (a.buttonValue != null && String(a.buttonValue).trim()) ||
+          (a.contents != null && String(a.contents).trim()) ||
+          "";
+        if (val) annotLines.push(`${label}: ${val}`);
+      }
+      if (annotLines.length > 0) {
+        parts.push(`--- Page ${i} Annotations ---\n${annotLines.join("\n")}`);
+      }
+    } catch {
+      /* ignore annotation errors */
+    }
   }
 
   let out = parts.join("\n\n").trim();
