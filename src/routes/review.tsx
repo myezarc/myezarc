@@ -15,8 +15,39 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
-import { extractPdfText } from "@/lib/pdf-extract";
+import { extractPdfText, fileToDataUrl, renderPdfToImages } from "@/lib/pdf-extract";
 import { runArcReview, type ReviewResult } from "@/lib/arc-review.functions";
+import { ocrImages } from "@/lib/ocr.functions";
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+
+type OcrFn = (args: {
+  data: { images: string[]; label?: string };
+}) => Promise<{ text: string }>;
+
+async function extractTextFromFile(
+  file: File,
+  ocr: OcrFn,
+  label: string,
+): Promise<string> {
+  const isPdf =
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  if (isPdf) {
+    const text = await extractPdfText(file);
+    if (text.length >= 200) return text;
+    // Likely scanned — fall back to OCR via vision model.
+    const images = await renderPdfToImages(file);
+    if (images.length === 0) return text;
+    const { text: ocrText } = await ocr({ data: { images, label } });
+    return ocrText;
+  }
+
+  // Image upload — OCR directly.
+  const dataUrl = await fileToDataUrl(file);
+  const { text: ocrText } = await ocr({ data: { images: [dataUrl], label } });
+  return ocrText;
+}
 
 export const Route = createFileRoute("/review")({
   head: () => ({
@@ -40,6 +71,7 @@ function ReviewPage() {
   const [result, setResult] = useState<ReviewResult | null>(null);
 
   const reviewFn = useServerFn(runArcReview);
+  const ocrFn = useServerFn(ocrImages);
   const running = stage !== "idle";
   const canRun = !!guideline && !!application && !running;
 
@@ -50,18 +82,18 @@ function ReviewPage() {
     try {
       setStage("extracting");
       const [guidelineText, applicationText] = await Promise.all([
-        extractPdfText(guideline),
-        extractPdfText(application),
+        extractTextFromFile(guideline, ocrFn, "HOA guideline"),
+        extractTextFromFile(application, ocrFn, "Homeowner application"),
       ]);
 
       if (guidelineText.length < 50) {
         throw new Error(
-          "Couldn't read text from the guideline PDF. Is it a scanned image? Try a text-based PDF.",
+          "Couldn't read the guideline document. Try a clearer scan or a text-based PDF.",
         );
       }
       if (applicationText.length < 20) {
         throw new Error(
-          "Couldn't read text from the application PDF. Is it a scanned image? Try a text-based PDF.",
+          "Couldn't read the application document. Try a clearer scan or a text-based PDF.",
         );
       }
 
@@ -120,13 +152,13 @@ function ReviewPage() {
         <div className="grid gap-6 md:grid-cols-2">
           <UploadCard
             label="Architectural guideline"
-            hint="The HOA's CC&Rs or architectural standards (PDF)."
+            hint="The HOA's CC&Rs or architectural standards (PDF or photo)."
             file={guideline}
             onFile={setGuideline}
           />
           <UploadCard
             label="Homeowner application"
-            hint="The change request submitted by the homeowner (PDF)."
+            hint="The change request submitted by the homeowner (PDF or photo)."
             file={application}
             onFile={setApplication}
           />
@@ -198,8 +230,13 @@ function UploadCard({
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
       const f = files[0];
-      if (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) {
-        alert("Please upload a PDF file.");
+      const isPdf =
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+      const isImage =
+        IMAGE_TYPES.includes(f.type) ||
+        /\.(png|jpe?g|webp)$/i.test(f.name);
+      if (!isPdf && !isImage) {
+        alert("Please upload a PDF or an image (PNG, JPG, WEBP).");
         return;
       }
       if (f.size > 20 * 1024 * 1024) {
@@ -215,7 +252,7 @@ function UploadCard({
     <div className="rounded-2xl border border-border bg-background p-6">
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <h3 className="font-display text-lg font-bold text-brand">{label}</h3>
-        <span className="text-xs font-medium text-muted-foreground">PDF · max 20MB</span>
+        <span className="text-xs font-medium text-muted-foreground">PDF or image · max 20MB</span>
       </div>
 
       {file ? (
@@ -264,7 +301,7 @@ function UploadCard({
           </div>
           <div>
             <p className="text-sm font-semibold text-brand">
-              Drop your PDF here or click to browse
+              Drop a PDF or photo here, or click to browse
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
           </div>
@@ -274,7 +311,7 @@ function UploadCard({
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept="application/pdf,.pdf,image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
