@@ -301,7 +301,7 @@ function UploadCard({
           </div>
           <div>
             <p className="text-sm font-semibold text-brand">
-              Drop your PDF here or click to browse
+              Drop a PDF or photo here, or click to browse
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
           </div>
