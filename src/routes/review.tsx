@@ -40,7 +40,7 @@ async function extractTextFromFile(
 
   if (isPdf) {
     const text = await extractPdfText(file);
-    if (text.length >= 200) return text;
+    if (isExtractedTextRich(text)) return text;
     // Likely scanned — fall back to OCR via vision model.
     const images = await renderPdfToImages(file);
     if (images.length === 0) return text;
