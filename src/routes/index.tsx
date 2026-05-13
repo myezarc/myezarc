@@ -71,9 +71,12 @@ function Nav() {
         <button className="hidden px-4 py-2 text-sm font-semibold text-foreground sm:inline-flex">
           Log in
         </button>
-        <button className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand/90">
-          Start Trial
-        </button>
+        <Link
+          to="/review"
+          className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand/90"
+        >
+          Start a Review
+        </Link>
       </div>
     </nav>
   );
@@ -98,9 +101,12 @@ function Hero() {
           messy emails and lost PDFs to a structured, transparent approval workflow.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
-          <button className="rounded-xl bg-brand px-8 py-4 font-bold text-brand-foreground shadow-lg transition-all hover:-translate-y-0.5">
-            Request a Demo
-          </button>
+          <Link
+            to="/review"
+            className="rounded-xl bg-brand px-8 py-4 text-center font-bold text-brand-foreground shadow-lg transition-all hover:-translate-y-0.5"
+          >
+            Start a Review
+          </Link>
           <a
             href="#workflow"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-8 py-4 font-bold text-foreground transition-all hover:bg-surface"
@@ -299,12 +305,18 @@ function CTA() {
             Ez-ARC.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button className="rounded-xl bg-brand-foreground px-10 py-4 font-bold text-brand shadow-xl transition-all hover:bg-brand-foreground/90">
-              Get Started Now
-            </button>
-            <button className="rounded-xl border border-brand-foreground/20 bg-transparent px-10 py-4 font-bold text-brand-foreground transition-all hover:bg-brand-foreground/10">
+            <Link
+              to="/review"
+              className="rounded-xl bg-brand-foreground px-10 py-4 font-bold text-brand shadow-xl transition-all hover:bg-brand-foreground/90"
+            >
+              Start a Review
+            </Link>
+            <Link
+              to="/"
+              className="rounded-xl border border-brand-foreground/20 bg-transparent px-10 py-4 font-bold text-brand-foreground transition-all hover:bg-brand-foreground/10"
+            >
               Talk to Sales
-            </button>
+            </Link>
           </div>
         </div>
       </div>
