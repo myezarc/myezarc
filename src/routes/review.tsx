@@ -305,6 +305,83 @@ function ReviewPage() {
 
         {result && <ResultPanel result={result} homeownerEmail={homeownerEmail} />}
       </main>
+
+      {emailPromptOpen && (
+        <EmailPromptDialog
+          onCancel={() => {
+            setEmailPromptOpen(false);
+            pendingTexts.current = null;
+          }}
+          onSubmit={submitEmailAndContinue}
+        />
+      )}
+    </div>
+  );
+}
+
+function EmailPromptDialog({
+  onCancel,
+  onSubmit,
+}: {
+  onCancel: () => void;
+  onSubmit: (email: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = () => {
+    const trimmed = value.trim();
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
+      setErr("Please enter a valid email address.");
+      return;
+    }
+    if (trimmed.length > 255) {
+      setErr("Email must be less than 255 characters.");
+      return;
+    }
+    onSubmit(trimmed);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-xl">
+        <h2 className="font-display text-xl font-bold text-brand">
+          Homeowner email needed
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          We couldn't find an email address in the application. Please enter the
+          homeowner's email so it can be added to the review message.
+        </p>
+        <input
+          type="email"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (err) setErr(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          placeholder="homeowner@example.com"
+          autoFocus
+          className="mt-4 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+        />
+        {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-brand transition-colors hover:bg-surface"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={submit}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-brand-foreground transition-colors hover:opacity-90"
+          >
+            Continue review
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
