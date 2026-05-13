@@ -424,7 +424,7 @@ function ResultPanel({
           </ul>
         </div>
 
-        <HomeownerMessage message={result.homeownerMessage} />
+        <HomeownerMessage message={result.homeownerMessage} email={homeownerEmail} />
       </div>
     </section>
   );
