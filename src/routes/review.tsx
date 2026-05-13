@@ -492,12 +492,14 @@ function FindingIcon({ status }: { status: "pass" | "warn" | "fail" }) {
   );
 }
 
-function HomeownerMessage({ message }: { message: string }) {
+function HomeownerMessage({ message, email }: { message: string; email: string }) {
   const [copied, setCopied] = useState(false);
+  const trimmedEmail = email.trim();
+  const fullMessage = trimmedEmail ? `To: ${trimmedEmail}\n\n${message}` : message;
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(message);
+      await navigator.clipboard.writeText(fullMessage);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -519,6 +521,11 @@ function HomeownerMessage({ message }: { message: string }) {
             <h3 className="mt-1 font-display text-lg font-bold text-brand">
               Neighbor-friendly next steps
             </h3>
+            {trimmedEmail && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                To: <span className="font-semibold text-brand">{trimmedEmail}</span>
+              </p>
+            )}
           </div>
         </div>
         <button
