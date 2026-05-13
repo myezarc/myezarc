@@ -29,7 +29,7 @@ type OcrFn = (args: {
   data: { images: string[]; label?: string };
 }) => Promise<{ text: string }>;
 
-const OCR_CHUNK = 8;
+const OCR_CHUNK = 2;
 
 async function ocrAllPages(
   ocr: OcrFn,
@@ -39,13 +39,30 @@ async function ocrAllPages(
   const chunks: string[] = [];
   for (let i = 0; i < images.length; i += OCR_CHUNK) {
     const slice = images.slice(i, i + OCR_CHUNK);
-    const { text } = await ocr({
-      data: {
-        images: slice,
-        label: `${label} (pages ${i + 1}-${i + slice.length})`,
-      },
-    });
-    if (text.trim()) chunks.push(text.trim());
+    try {
+      const { text } = await ocr({
+        data: {
+          images: slice,
+          label: `${label} (pages ${i + 1}-${i + slice.length})`,
+        },
+      });
+      if (text.trim()) chunks.push(text.trim());
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "OCR failed.";
+      if (/timeout|504|gateway/i.test(msg) && slice.length > 1) {
+        for (let j = 0; j < slice.length; j++) {
+          const { text } = await ocr({
+            data: {
+              images: [slice[j]],
+              label: `${label} (page ${i + j + 1})`,
+            },
+          });
+          if (text.trim()) chunks.push(text.trim());
+        }
+        continue;
+      }
+      throw e;
+    }
   }
   return chunks.join("\n\n");
 }
