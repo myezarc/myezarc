@@ -15,8 +15,35 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
-import { extractPdfText } from "@/lib/pdf-extract";
+import { extractPdfText, fileToDataUrl, renderPdfToImages } from "@/lib/pdf-extract";
 import { runArcReview, type ReviewResult } from "@/lib/arc-review.functions";
+import { ocrImages } from "@/lib/ocr.functions";
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+
+async function extractTextFromFile(
+  file: File,
+  ocr: ReturnType<typeof useServerFn<typeof ocrImages>>,
+  label: string,
+): Promise<string> {
+  const isPdf =
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+  if (isPdf) {
+    const text = await extractPdfText(file);
+    if (text.length >= 200) return text;
+    // Likely scanned — fall back to OCR via vision model.
+    const images = await renderPdfToImages(file);
+    if (images.length === 0) return text;
+    const { text: ocrText } = await ocr({ data: { images, label } });
+    return ocrText;
+  }
+
+  // Image upload — OCR directly.
+  const dataUrl = await fileToDataUrl(file);
+  const { text: ocrText } = await ocr({ data: { images: [dataUrl], label } });
+  return ocrText;
+}
 
 export const Route = createFileRoute("/review")({
   head: () => ({
