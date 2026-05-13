@@ -3,8 +3,11 @@ import { useCallback, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  Copy,
+  Check,
   FileText,
   Loader2,
+  MessageSquareHeart,
   Sparkles,
   UploadCloud,
   X,
