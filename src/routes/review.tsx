@@ -98,7 +98,9 @@ function ReviewPage() {
     try {
       setStage("extracting");
       const [guidelineText, applicationText] = await Promise.all([
-        extractTextFromFile(guideline, ocrFn, "HOA guideline"),
+        extractTextFromFile(guideline, ocrFn, "HOA guideline", {
+          preferOcr: true,
+        }),
         extractTextFromFile(application, ocrFn, "Homeowner application", {
           preferOcr: true,
         }),
