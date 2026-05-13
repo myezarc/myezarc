@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
-  ClipboardList,
   Copy,
   FileText,
   Loader2,
@@ -98,6 +97,7 @@ export const Route = createFileRoute("/review")({
 function ReviewPage() {
   const [guideline, setGuideline] = useState<File | null>(null);
   const [application, setApplication] = useState<File | null>(null);
+  const [homeownerEmail, setHomeownerEmail] = useState("");
   const [stage, setStage] = useState<"idle" | "extracting" | "reviewing">("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
@@ -200,7 +200,24 @@ function ReviewPage() {
           />
         </div>
 
-        <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-surface p-6 md:flex-row md:items-center">
+        <div className="mt-8 rounded-2xl border border-border bg-background p-6">
+          <label htmlFor="homeowner-email" className="block font-display text-sm font-bold text-brand">
+            Homeowner email
+          </label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            We'll include this address at the top of the message to the homeowner so you can copy and send it.
+          </p>
+          <input
+            id="homeowner-email"
+            type="email"
+            value={homeownerEmail}
+            onChange={(e) => setHomeownerEmail(e.target.value)}
+            placeholder="homeowner@example.com"
+            className="mt-3 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+          />
+        </div>
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-surface p-6 md:flex-row md:items-center">
           <div className="flex items-start gap-3">
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
               <Sparkles className="size-5" />
@@ -242,7 +259,7 @@ function ReviewPage() {
           </div>
         )}
 
-        {result && <ResultPanel result={result} />}
+        {result && <ResultPanel result={result} homeownerEmail={homeownerEmail} />}
       </main>
     </div>
   );
@@ -355,7 +372,13 @@ function UploadCard({
   );
 }
 
-function ResultPanel({ result }: { result: ReviewResult }) {
+function ResultPanel({
+  result,
+  homeownerEmail,
+}: {
+  result: ReviewResult;
+  homeownerEmail: string;
+}) {
   const palette = {
     approved: { label: "Approved", cls: "bg-emerald-100 text-emerald-700" },
     conditional: { label: "Conditional approval", cls: "bg-amber-100 text-amber-700" },
@@ -383,8 +406,6 @@ function ResultPanel({ result }: { result: ReviewResult }) {
       <div className="space-y-6 p-6">
         <p className="text-base leading-relaxed text-foreground">{result.summary}</p>
 
-        <FormSectionPanel form={result.formSection} />
-
         <div>
           <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Findings
@@ -402,51 +423,9 @@ function ResultPanel({ result }: { result: ReviewResult }) {
           </ul>
         </div>
 
-        <HomeownerMessage message={result.homeownerMessage} />
+        <HomeownerMessage message={result.homeownerMessage} email={homeownerEmail} />
       </div>
     </section>
-  );
-}
-
-function FormSectionPanel({ form }: { form: ReviewResult["formSection"] }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-6">
-      <div className="mb-4 flex items-start gap-3">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/5 text-brand">
-          <ClipboardList className="size-5" />
-        </div>
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-            Application form found in the guideline
-          </p>
-          <h3 className="mt-1 font-display text-lg font-bold text-brand">
-            {form.found ? form.sectionTitle || "Application Form" : "No form section detected"}
-          </h3>
-          {form.locationHint && (
-            <p className="mt-1 text-xs text-muted-foreground">Location: {form.locationHint}</p>
-          )}
-        </div>
-      </div>
-
-      {form.found && form.requiredFields.length > 0 ? (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {form.requiredFields.map((f, i) => (
-            <li
-              key={i}
-              className="rounded-lg border border-border bg-background p-3 text-sm"
-            >
-              <p className="font-semibold text-brand">{f.name}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{f.description}</p>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          The guideline didn't include an explicit application-form section, so the
-          review below is based on substantive rules only.
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -470,12 +449,14 @@ function FindingIcon({ status }: { status: "pass" | "warn" | "fail" }) {
   );
 }
 
-function HomeownerMessage({ message }: { message: string }) {
+function HomeownerMessage({ message, email }: { message: string; email: string }) {
   const [copied, setCopied] = useState(false);
+  const trimmedEmail = email.trim();
+  const fullMessage = trimmedEmail ? `To: ${trimmedEmail}\n\n${message}` : message;
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(message);
+      await navigator.clipboard.writeText(fullMessage);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -497,6 +478,11 @@ function HomeownerMessage({ message }: { message: string }) {
             <h3 className="mt-1 font-display text-lg font-bold text-brand">
               Neighbor-friendly next steps
             </h3>
+            {trimmedEmail && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                To: <span className="font-semibold text-brand">{trimmedEmail}</span>
+              </p>
+            )}
           </div>
         </div>
         <button
