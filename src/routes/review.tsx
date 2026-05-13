@@ -34,14 +34,25 @@ async function extractTextFromFile(
   file: File,
   ocr: OcrFn,
   label: string,
+  { preferOcr = false }: { preferOcr?: boolean } = {},
 ): Promise<string> {
   const isPdf =
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
   if (isPdf) {
+    // For application forms (preferOcr), go straight to vision OCR — pdfjs
+    // returns text in stream order which interleaves blank-line underscores
+    // with values and confuses the reviewer model. OCR reads the rendered
+    // page exactly as a human sees it.
+    if (preferOcr) {
+      const images = await renderPdfToImages(file);
+      if (images.length > 0) {
+        const { text: ocrText } = await ocr({ data: { images, label } });
+        if (ocrText.trim().length > 0) return ocrText;
+      }
+    }
     const text = await extractPdfText(file);
     if (isExtractedTextRich(text)) return text;
-    // Likely scanned — fall back to OCR via vision model.
     const images = await renderPdfToImages(file);
     if (images.length === 0) return text;
     const { text: ocrText } = await ocr({ data: { images, label } });
