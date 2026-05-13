@@ -373,7 +373,13 @@ function UploadCard({
   );
 }
 
-function ResultPanel({ result }: { result: ReviewResult }) {
+function ResultPanel({
+  result,
+  homeownerEmail,
+}: {
+  result: ReviewResult;
+  homeownerEmail: string;
+}) {
   const palette = {
     approved: { label: "Approved", cls: "bg-emerald-100 text-emerald-700" },
     conditional: { label: "Conditional approval", cls: "bg-amber-100 text-amber-700" },
@@ -400,8 +406,6 @@ function ResultPanel({ result }: { result: ReviewResult }) {
 
       <div className="space-y-6 p-6">
         <p className="text-base leading-relaxed text-foreground">{result.summary}</p>
-
-        <FormSectionPanel form={result.formSection} />
 
         <div>
           <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.18em] text-muted-foreground">
