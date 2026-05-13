@@ -67,6 +67,7 @@ function ReviewPage() {
   const [result, setResult] = useState<ReviewResult | null>(null);
 
   const reviewFn = useServerFn(runArcReview);
+  const ocrFn = useServerFn(ocrImages);
   const running = stage !== "idle";
   const canRun = !!guideline && !!application && !running;
 
@@ -77,18 +78,18 @@ function ReviewPage() {
     try {
       setStage("extracting");
       const [guidelineText, applicationText] = await Promise.all([
-        extractPdfText(guideline),
-        extractPdfText(application),
+        extractTextFromFile(guideline, ocrFn, "HOA guideline"),
+        extractTextFromFile(application, ocrFn, "Homeowner application"),
       ]);
 
       if (guidelineText.length < 50) {
         throw new Error(
-          "Couldn't read text from the guideline PDF. Is it a scanned image? Try a text-based PDF.",
+          "Couldn't read the guideline document. Try a clearer scan or a text-based PDF.",
         );
       }
       if (applicationText.length < 20) {
         throw new Error(
-          "Couldn't read text from the application PDF. Is it a scanned image? Try a text-based PDF.",
+          "Couldn't read the application document. Try a clearer scan or a text-based PDF.",
         );
       }
 
