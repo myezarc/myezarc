@@ -30,6 +30,27 @@ type OcrFn = (args: {
   data: { images: string[]; label?: string };
 }) => Promise<{ text: string }>;
 
+const OCR_CHUNK = 8;
+
+async function ocrAllPages(
+  ocr: OcrFn,
+  images: string[],
+  label: string,
+): Promise<string> {
+  const chunks: string[] = [];
+  for (let i = 0; i < images.length; i += OCR_CHUNK) {
+    const slice = images.slice(i, i + OCR_CHUNK);
+    const { text } = await ocr({
+      data: {
+        images: slice,
+        label: `${label} (pages ${i + 1}-${i + slice.length})`,
+      },
+    });
+    if (text.trim()) chunks.push(text.trim());
+  }
+  return chunks.join("\n\n");
+}
+
 async function extractTextFromFile(
   file: File,
   ocr: OcrFn,
@@ -40,14 +61,10 @@ async function extractTextFromFile(
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 
   if (isPdf) {
-    // For application forms (preferOcr), go straight to vision OCR — pdfjs
-    // returns text in stream order which interleaves blank-line underscores
-    // with values and confuses the reviewer model. OCR reads the rendered
-    // page exactly as a human sees it.
     if (preferOcr) {
       const images = await renderPdfToImages(file);
       if (images.length > 0) {
-        const { text: ocrText } = await ocr({ data: { images, label } });
+        const ocrText = await ocrAllPages(ocr, images, label);
         if (ocrText.trim().length > 0) return ocrText;
       }
     }
@@ -55,8 +72,7 @@ async function extractTextFromFile(
     if (isExtractedTextRich(text)) return text;
     const images = await renderPdfToImages(file);
     if (images.length === 0) return text;
-    const { text: ocrText } = await ocr({ data: { images, label } });
-    return ocrText;
+    return await ocrAllPages(ocr, images, label);
   }
 
   // Image upload — OCR directly.
