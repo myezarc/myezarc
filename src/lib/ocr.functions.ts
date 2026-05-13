@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const InputSchema = z.object({
-  // Up to 10 images per call — chunk on the client for longer PDFs.
-  images: z.array(z.string().min(20).max(8_000_000)).min(1).max(10),
+  // Keep each OCR call small enough to finish inside the request window.
+  images: z.array(z.string().min(20).max(3_500_000)).min(1).max(2),
   label: z.string().max(120).optional(),
 });
 
@@ -46,7 +46,7 @@ export const ocrImages = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: userContent },

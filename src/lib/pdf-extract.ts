@@ -90,8 +90,8 @@ export function isExtractedTextRich(text: string): boolean {
  */
 export async function renderPdfToImages(
   file: File,
-  maxPages = 20,
-  scale = 1.6,
+  maxPages = 12,
+  scale = 1.1,
 ): Promise<string[]> {
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
@@ -106,7 +106,7 @@ export async function renderPdfToImages(
     const ctx = canvas.getContext("2d");
     if (!ctx) continue;
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-    out.push(canvas.toDataURL("image/png"));
+    out.push(canvas.toDataURL("image/jpeg", 0.68));
   }
   return out;
 }
