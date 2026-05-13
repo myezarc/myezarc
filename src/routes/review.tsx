@@ -148,13 +148,13 @@ function ReviewPage() {
         <div className="grid gap-6 md:grid-cols-2">
           <UploadCard
             label="Architectural guideline"
-            hint="The HOA's CC&Rs or architectural standards (PDF)."
+            hint="The HOA's CC&Rs or architectural standards (PDF or photo)."
             file={guideline}
             onFile={setGuideline}
           />
           <UploadCard
             label="Homeowner application"
-            hint="The change request submitted by the homeowner (PDF)."
+            hint="The change request submitted by the homeowner (PDF or photo)."
             file={application}
             onFile={setApplication}
           />
