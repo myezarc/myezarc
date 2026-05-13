@@ -15,7 +15,12 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
-import { extractPdfText, fileToDataUrl, renderPdfToImages } from "@/lib/pdf-extract";
+import {
+  extractPdfText,
+  fileToDataUrl,
+  isExtractedTextRich,
+  renderPdfToImages,
+} from "@/lib/pdf-extract";
 import { runArcReview, type ReviewResult } from "@/lib/arc-review.functions";
 import { ocrImages } from "@/lib/ocr.functions";
 
