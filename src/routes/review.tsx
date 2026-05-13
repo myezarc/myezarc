@@ -246,10 +246,10 @@ function ReviewPage() {
 
         <div className="mt-8 rounded-2xl border border-border bg-background p-6">
           <label htmlFor="homeowner-email" className="block font-display text-sm font-bold text-brand">
-            Homeowner email
+            Homeowner email <span className="font-normal text-muted-foreground">(optional)</span>
           </label>
           <p className="mt-1 text-xs text-muted-foreground">
-            We'll include this address at the top of the message to the homeowner so you can copy and send it.
+            We'll try to extract this from the application. If we can't find one, we'll ask before starting the review.
           </p>
           <input
             id="homeowner-email"
