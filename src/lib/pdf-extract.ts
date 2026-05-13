@@ -9,6 +9,28 @@ export async function extractPdfText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
   const parts: string[] = [];
+
+  // Try to read AcroForm / fillable form field values across the whole doc.
+  let formValues: Array<{ name: string; value: string }> = [];
+  try {
+    const fieldObjects = (await doc.getFieldObjects()) as Record<
+      string,
+      Array<{ name?: string; value?: unknown }>
+    > | null;
+    if (fieldObjects) {
+      for (const [name, arr] of Object.entries(fieldObjects)) {
+        for (const f of arr) {
+          const v = f?.value;
+          if (v != null && String(v).trim() !== "") {
+            formValues.push({ name: f.name ?? name, value: String(v) });
+          }
+        }
+      }
+    }
+  } catch {
+    formValues = [];
+  }
+
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
@@ -17,8 +39,23 @@ export async function extractPdfText(file: File): Promise<string> {
       .join(" ");
     parts.push(`--- Page ${i} ---\n${pageText}`);
   }
-  return parts.join("\n\n").trim();
+
+  let out = parts.join("\n\n").trim();
+  if (formValues.length > 0) {
+    out +=
+      "\n\n--- Filled Form Fields ---\n" +
+      formValues.map((f) => `${f.name}: ${f.value}`).join("\n");
+  }
+  return out;
 }
+
+/** Heuristic: did native extraction yield enough real prose to skip OCR? */
+export function isExtractedTextRich(text: string): boolean {
+  if (text.length < 500) return false;
+  const letters = text.match(/[a-zA-Z]/g)?.length ?? 0;
+  return letters >= 200;
+}
+
 
 /**
  * Render up to `maxPages` of a PDF as PNG data URLs (for OCR fallback on

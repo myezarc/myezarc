@@ -15,7 +15,12 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
-import { extractPdfText, fileToDataUrl, renderPdfToImages } from "@/lib/pdf-extract";
+import {
+  extractPdfText,
+  fileToDataUrl,
+  isExtractedTextRich,
+  renderPdfToImages,
+} from "@/lib/pdf-extract";
 import { runArcReview, type ReviewResult } from "@/lib/arc-review.functions";
 import { ocrImages } from "@/lib/ocr.functions";
 
@@ -35,7 +40,7 @@ async function extractTextFromFile(
 
   if (isPdf) {
     const text = await extractPdfText(file);
-    if (text.length >= 200) return text;
+    if (isExtractedTextRich(text)) return text;
     // Likely scanned — fall back to OCR via vision model.
     const images = await renderPdfToImages(file);
     if (images.length === 0) return text;
