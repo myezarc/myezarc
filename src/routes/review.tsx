@@ -260,7 +260,7 @@ function ReviewPage() {
           </div>
         )}
 
-        {result && <ResultPanel result={result} />}
+        {result && <ResultPanel result={result} homeownerEmail={homeownerEmail} />}
       </main>
     </div>
   );
