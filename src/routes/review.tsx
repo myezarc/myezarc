@@ -248,7 +248,7 @@ function UploadCard({
     <div className="rounded-2xl border border-border bg-background p-6">
       <div className="mb-4 flex items-baseline justify-between gap-3">
         <h3 className="font-display text-lg font-bold text-brand">{label}</h3>
-        <span className="text-xs font-medium text-muted-foreground">PDF · max 20MB</span>
+        <span className="text-xs font-medium text-muted-foreground">PDF or image · max 20MB</span>
       </div>
 
       {file ? (
