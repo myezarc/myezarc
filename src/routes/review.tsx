@@ -201,7 +201,24 @@ function ReviewPage() {
           />
         </div>
 
-        <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-surface p-6 md:flex-row md:items-center">
+        <div className="mt-8 rounded-2xl border border-border bg-background p-6">
+          <label htmlFor="homeowner-email" className="block font-display text-sm font-bold text-brand">
+            Homeowner email
+          </label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            We'll include this address at the top of the message to the homeowner so you can copy and send it.
+          </p>
+          <input
+            id="homeowner-email"
+            type="email"
+            value={homeownerEmail}
+            onChange={(e) => setHomeownerEmail(e.target.value)}
+            placeholder="homeowner@example.com"
+            className="mt-3 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm text-foreground outline-none transition-colors focus:border-accent"
+          />
+        </div>
+
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-border bg-surface p-6 md:flex-row md:items-center">
           <div className="flex items-start gap-3">
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
               <Sparkles className="size-5" />
