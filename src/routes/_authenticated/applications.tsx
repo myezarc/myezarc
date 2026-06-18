@@ -5,9 +5,15 @@ import { listMyApplications } from "@/lib/applications.functions";
 import { StatusBadge } from "@/components/status-badge";
 import { FileText } from "lucide-react";
 
+import { MembershipGate } from "@/components/membership-gate";
+
 export const Route = createFileRoute("/_authenticated/applications")({
   head: () => ({ meta: [{ title: "My applications — Ez-ARC" }] }),
-  component: ApplicationsList,
+  component: () => (
+    <MembershipGate>
+      <ApplicationsList />
+    </MembershipGate>
+  ),
 });
 
 function ApplicationsList() {

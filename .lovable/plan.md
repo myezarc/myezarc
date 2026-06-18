@@ -1,94 +1,50 @@
+# Park Avenue HOA Membership Approval
 
-## Goal
+Right now any signed-in user can submit ARC applications. We'll add an HOA layer so homeowners must request membership in **Park Avenue HOA** (address, phone, etc.) and be approved by an admin before they can apply.
 
-Turn the current single-page review tool into a real ARC portal with login, roles, homeowner submissions, and a reviewer dashboard — all backed by Lovable Cloud.
+## What changes for users
 
-## Roles
+- **Homeowner, first login**: lands on a "Join Park Avenue HOA" form asking for street address, unit (optional), city, state, zip, phone, email (prefilled), and an optional note. Submitting creates a pending membership request.
+- **Pending state**: dashboard, apply, and applications pages are blocked behind a "Membership pending approval" screen.
+- **Approved**: full access — can submit ARC applications as today.
+- **Rejected**: shown the rejection reason and a button to resubmit.
+- **Admin**: new `/admin/memberships` page lists pending/approved/rejected requests with Approve / Reject (with reason) buttons.
+- **Reviewers/admins**: bypass the gate (they don't need a membership).
 
-- `homeowner` — submit applications, see their own status/messages
-- `reviewer` — view submission queue, run AI review, decide, message homeowner
-- `admin` — everything reviewers can do, plus upload/replace HOA guideline PDF, manage users/roles
+## Data model
 
-Roles stored in a separate `user_roles` table with `app_role` enum and a `has_role()` security-definer function (no roles on profiles).
+New tables (Lovable Cloud):
 
-## Auth
+- `hoas` — `id`, `name`, `slug`, `description`. Seeded with one row: **Park Avenue HOA**.
+- `hoa_memberships` — `id`, `user_id`, `hoa_id`, `status` (`pending`/`approved`/`rejected`), `street_address`, `unit`, `city`, `state`, `zip`, `phone`, `email`, `note`, `rejection_reason`, `reviewed_by`, `reviewed_at`, timestamps. Unique on (`user_id`, `hoa_id`).
 
-- Email/password + Google (managed Lovable OAuth via `lovable.auth.signInWithOAuth`)
-- Public `/auth` page (sign in / sign up tabs)
-- `_authenticated/` layout gates the app
-- Trigger auto-creates a `profiles` row on signup; first user can be promoted to admin via SQL/insert tool
-
-## Database (new tables, all with RLS + GRANTs)
-
-- `profiles` — `user_id`, `full_name`, `email`, `phone`, `address`
-- `app_role` enum: `homeowner | reviewer | admin`
-- `user_roles` — `user_id`, `role`
-- `hoa_guidelines` — `id`, `title`, `storage_path`, `extracted_text`, `is_active`, uploaded_by (admin uploads PDF once; reused for every review)
-- `applications` — `id`, `homeowner_id`, `homeowner_email`, `title`, `application_pdf_path`, `extracted_text`, `status` (`submitted | in_review | approved | conditional | rejected | changes_requested`), `submitted_at`
-- `application_files` — extra supporting files per application (photos, plans)
-- `arc_reviews` — `application_id`, `reviewer_id`, `decision`, `summary`, `findings` (jsonb), `homeowner_message`, `model`, `created_at`
-- `messages` — `application_id`, `sender_id`, `body`, `created_at` (homeowner ↔ reviewer thread)
+Existing `applications` table gets a nullable `hoa_id` column so submissions are scoped to the HOA the homeowner belongs to.
 
 RLS:
-- Homeowners read/write only their own applications, files, and messages
-- Reviewers/admins read all applications, write reviews and messages
-- Only admins write `hoa_guidelines`; everyone authenticated reads the active one
-- `user_roles`: select own row; admin manages all (via `has_role`)
+- Homeowners read/insert/update their own membership row (only while pending — can resubmit after rejection).
+- Reviewers/admins read all memberships; admins update status.
+- `hoas` readable by everyone signed in.
 
-## Storage
+Helper function `public.is_approved_member(_user_id uuid)` (security definer) for use in app logic / future policies.
 
-- Private bucket `arc-documents` for guideline PDFs, application PDFs, and supporting files
-- Path convention: `guidelines/<id>.pdf`, `applications/<user_id>/<application_id>/<filename>`
-- RLS on `storage.objects` mirrors table policies (owner + reviewers/admins)
+## Frontend
 
-## Routes
+- New route `/_authenticated/membership` — shows the form, pending screen, or rejection screen depending on status. Used as a gate.
+- `_authenticated/route.tsx` is integration-managed (don't touch). Instead, the dashboard/apply/applications pages call a `getMyMembershipStatus` server fn; if the user is a homeowner and not approved, redirect to `/membership`. Staff (reviewer/admin) skip the check.
+- New route `/_authenticated/admin/memberships` — admin list + approve/reject actions.
+- Dashboard gets a "Membership: Park Avenue HOA — Approved/Pending/Rejected" badge.
 
-```
-/                         landing (public)
-/auth                     sign in / sign up (public)
-/_authenticated/
-  dashboard               role-aware home
-  apply                   homeowner: new application (PDF upload + supporting files + email)
-  applications            homeowner: list of their submissions
-  applications/$id        detail: status, AI review result, message thread
-  review                  reviewer/admin: queue of submissions
-  review/$id              reviewer/admin: run AI review, edit, send decision + message
-  admin/guidelines        admin: upload/replace active guideline PDF
-  admin/users             admin: assign roles
-```
+## Server functions (`src/lib/membership.functions.ts`)
 
-The current `/review` becomes `review/$id` and pulls guideline + application from the DB instead of two ad-hoc uploads.
+- `getMyMembership()` — returns current user's membership row + HOA.
+- `submitMembership({ ...formFields })` — upserts a pending membership for the user (only if no row, or status is `rejected`).
+- `listMemberships({ status? })` — admin only.
+- `decideMembership({ id, status: 'approved'|'rejected', rejection_reason? })` — admin only; sets `reviewed_by`/`reviewed_at`.
 
-## Server functions (`src/lib/*.functions.ts`)
+All protected via `requireSupabaseAuth`; admin endpoints check `has_role(... ,'admin')`.
 
-- `submitApplication` — homeowner upload: stores PDF, runs OCR/text extraction, creates `applications` row
-- `uploadGuideline` (admin) — stores PDF, extracts text, marks active
-- `runArcReviewForApplication` — loads active guideline + application text, calls existing `runArcReview`, persists `arc_reviews` row, updates application status
-- `sendDecision` — reviewer finalizes: updates status + posts homeowner message (and email later)
-- `postMessage` / `listMessages`
-- `assignRole` (admin)
+## Out of scope
 
-All protected fns use `requireSupabaseAuth` + `has_role` checks where needed. `attachSupabaseAuth` already wired.
-
-## Reuse of existing code
-
-- Keep `src/lib/pdf-extract.ts`, `src/lib/ocr.functions.ts`, `src/lib/arc-review.functions.ts` as-is
-- The current `review.tsx` UI is refactored into the new `review/$id` page; email-prompt dialog stays as a fallback when no email is on file
-
-## Out of scope for this MVP (call out, defer)
-
-- Sending the homeowner email message via real email (we display + store; can wire transactional email later)
-- Structured application form (PDF-only per your choice)
-- Public application status lookup without login
-
-## Build order
-
-1. Migration: enum, tables, RLS, GRANTs, `has_role`, profile trigger, storage bucket
-2. Configure Google social auth + auth page + `_authenticated` layout (managed by integration)
-3. Server functions for guideline + application + review + messages
-4. Homeowner pages: `apply`, `applications`, `applications/$id`
-5. Reviewer pages: `review` queue + `review/$id` (port existing UI)
-6. Admin pages: guidelines + users
-7. Role-aware dashboard + nav
-
-After approval I'll run the migration first (you'll review it), then implement the rest in one pass.
+- Multiple HOAs per user (single Park Avenue HOA only for now).
+- Email notifications on approval/rejection.
+- Editing an already-approved address (admin-only later).
