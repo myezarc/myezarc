@@ -13,12 +13,14 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedReviewRouteImport } from './routes/_authenticated/review'
+import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedApplyRouteImport } from './routes/_authenticated/apply'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
 import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
 import { Route as AuthenticatedApplicationsIdRouteImport } from './routes/_authenticated/applications.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin.memberships'
 import { Route as AuthenticatedAdminGuidelinesRouteImport } from './routes/_authenticated/admin.guidelines'
 
 const AuthRoute = AuthRouteImport.update({
@@ -38,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedReviewRoute = AuthenticatedReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMembershipRoute = AuthenticatedMembershipRouteImport.update({
+  id: '/membership',
+  path: '/membership',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -72,6 +79,12 @@ const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminMembershipsRoute =
+  AuthenticatedAdminMembershipsRouteImport.update({
+    id: '/admin/memberships',
+    path: '/admin/memberships',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminGuidelinesRoute =
   AuthenticatedAdminGuidelinesRouteImport.update({
     id: '/admin/guidelines',
@@ -85,8 +98,10 @@ export interface FileRoutesByFullPath {
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/membership': typeof AuthenticatedMembershipRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/applications/$id': typeof AuthenticatedApplicationsIdRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
@@ -97,8 +112,10 @@ export interface FileRoutesByTo {
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/membership': typeof AuthenticatedMembershipRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/applications/$id': typeof AuthenticatedApplicationsIdRoute
   '/review/$id': typeof AuthenticatedReviewIdRoute
@@ -111,8 +128,10 @@ export interface FileRoutesById {
   '/_authenticated/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/membership': typeof AuthenticatedMembershipRoute
   '/_authenticated/review': typeof AuthenticatedReviewRouteWithChildren
   '/_authenticated/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/_authenticated/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/applications/$id': typeof AuthenticatedApplicationsIdRoute
   '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
@@ -125,8 +144,10 @@ export interface FileRouteTypes {
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/membership'
     | '/review'
     | '/admin/guidelines'
+    | '/admin/memberships'
     | '/admin/users'
     | '/applications/$id'
     | '/review/$id'
@@ -137,8 +158,10 @@ export interface FileRouteTypes {
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/membership'
     | '/review'
     | '/admin/guidelines'
+    | '/admin/memberships'
     | '/admin/users'
     | '/applications/$id'
     | '/review/$id'
@@ -150,8 +173,10 @@ export interface FileRouteTypes {
     | '/_authenticated/applications'
     | '/_authenticated/apply'
     | '/_authenticated/dashboard'
+    | '/_authenticated/membership'
     | '/_authenticated/review'
     | '/_authenticated/admin/guidelines'
+    | '/_authenticated/admin/memberships'
     | '/_authenticated/admin/users'
     | '/_authenticated/applications/$id'
     | '/_authenticated/review/$id'
@@ -191,6 +216,13 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof AuthenticatedReviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/membership': {
+      id: '/_authenticated/membership'
+      path: '/membership'
+      fullPath: '/membership'
+      preLoaderRoute: typeof AuthenticatedMembershipRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -235,6 +267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/memberships': {
+      id: '/_authenticated/admin/memberships'
+      path: '/admin/memberships'
+      fullPath: '/admin/memberships'
+      preLoaderRoute: typeof AuthenticatedAdminMembershipsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/guidelines': {
       id: '/_authenticated/admin/guidelines'
       path: '/admin/guidelines'
@@ -274,8 +313,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRouteWithChildren
   AuthenticatedApplyRoute: typeof AuthenticatedApplyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedMembershipRoute: typeof AuthenticatedMembershipRoute
   AuthenticatedReviewRoute: typeof AuthenticatedReviewRouteWithChildren
   AuthenticatedAdminGuidelinesRoute: typeof AuthenticatedAdminGuidelinesRoute
+  AuthenticatedAdminMembershipsRoute: typeof AuthenticatedAdminMembershipsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
 }
 
@@ -283,8 +324,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApplicationsRoute: AuthenticatedApplicationsRouteWithChildren,
   AuthenticatedApplyRoute: AuthenticatedApplyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedMembershipRoute: AuthenticatedMembershipRoute,
   AuthenticatedReviewRoute: AuthenticatedReviewRouteWithChildren,
   AuthenticatedAdminGuidelinesRoute: AuthenticatedAdminGuidelinesRoute,
+  AuthenticatedAdminMembershipsRoute: AuthenticatedAdminMembershipsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
 }
 
