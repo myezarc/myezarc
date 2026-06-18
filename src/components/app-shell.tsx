@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck, FolderDown } from "lucide-react";
+import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck, FolderDown, Github } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,6 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
             {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />}
             {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+            <NavLink to="/github-setup" icon={Github} label="GitHub" />
           </nav>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground md:inline">{user?.email}</span>
@@ -54,8 +55,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {isStaff && <NavLink to="/review" icon={Shield} label="Queue" />}
           {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
           {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />}
-          {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
-        </div>
+            {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+            <NavLink to="/github-setup" icon={Github} label="GitHub" />
+          </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-12">{children}</main>
     </div>
