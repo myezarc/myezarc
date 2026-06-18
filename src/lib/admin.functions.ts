@@ -107,3 +107,15 @@ export const claimFirstAdmin = createServerFn({ method: "POST" })
     if (insErr) throw new Error(insErr.message);
     return { ok: true };
   });
+
+export const getAdminCount = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { count, error } = await supabaseAdmin
+      .from("user_roles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "admin");
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  });
