@@ -55,8 +55,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {isStaff && <NavLink to="/review" icon={Shield} label="Queue" />}
           {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
           {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />}
-          {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
-        </div>
+            {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+            <NavLink to="/github-setup" icon={Github} label="GitHub" />
+          </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-12">{children}</main>
     </div>
