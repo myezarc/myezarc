@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedReviewRouteImport } from './routes/_authenticated/review'
+import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
 import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedApplyRouteImport } from './routes/_authenticated/apply'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedReviewRoute = AuthenticatedReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedResourcesRoute = AuthenticatedResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMembershipRoute = AuthenticatedMembershipRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/membership': typeof AuthenticatedMembershipRoute
+  '/resources': typeof AuthenticatedResourcesRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/membership': typeof AuthenticatedMembershipRoute
+  '/resources': typeof AuthenticatedResourcesRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/membership': typeof AuthenticatedMembershipRoute
+  '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/review': typeof AuthenticatedReviewRouteWithChildren
   '/_authenticated/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
   '/_authenticated/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/dashboard'
     | '/membership'
+    | '/resources'
     | '/review'
     | '/admin/guidelines'
     | '/admin/memberships'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/dashboard'
     | '/membership'
+    | '/resources'
     | '/review'
     | '/admin/guidelines'
     | '/admin/memberships'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/_authenticated/apply'
     | '/_authenticated/dashboard'
     | '/_authenticated/membership'
+    | '/_authenticated/resources'
     | '/_authenticated/review'
     | '/_authenticated/admin/guidelines'
     | '/_authenticated/admin/memberships'
@@ -216,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof AuthenticatedReviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/resources': {
+      id: '/_authenticated/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof AuthenticatedResourcesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/membership': {
@@ -314,6 +333,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApplyRoute: typeof AuthenticatedApplyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedMembershipRoute: typeof AuthenticatedMembershipRoute
+  AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedReviewRoute: typeof AuthenticatedReviewRouteWithChildren
   AuthenticatedAdminGuidelinesRoute: typeof AuthenticatedAdminGuidelinesRoute
   AuthenticatedAdminMembershipsRoute: typeof AuthenticatedAdminMembershipsRoute
@@ -325,6 +345,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApplyRoute: AuthenticatedApplyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedMembershipRoute: AuthenticatedMembershipRoute,
+  AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedReviewRoute: AuthenticatedReviewRouteWithChildren,
   AuthenticatedAdminGuidelinesRoute: AuthenticatedAdminGuidelinesRoute,
   AuthenticatedAdminMembershipsRoute: AuthenticatedAdminMembershipsRoute,
