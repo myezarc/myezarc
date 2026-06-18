@@ -14,16 +14,285 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      application_files: {
+        Row: {
+          application_id: string
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "application_files_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applications: {
+        Row: {
+          application_pdf_path: string | null
+          created_at: string
+          description: string | null
+          extracted_text: string | null
+          homeowner_email: string | null
+          homeowner_id: string
+          id: string
+          status: Database["public"]["Enums"]["application_status"]
+          submitted_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          application_pdf_path?: string | null
+          created_at?: string
+          description?: string | null
+          extracted_text?: string | null
+          homeowner_email?: string | null
+          homeowner_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          application_pdf_path?: string | null
+          created_at?: string
+          description?: string | null
+          extracted_text?: string | null
+          homeowner_email?: string | null
+          homeowner_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["application_status"]
+          submitted_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      arc_reviews: {
+        Row: {
+          application_id: string
+          created_at: string
+          decision: Database["public"]["Enums"]["review_decision"]
+          findings: Json | null
+          form_section: Json | null
+          homeowner_message: string | null
+          id: string
+          is_final: boolean
+          model: string | null
+          reviewer_id: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          decision: Database["public"]["Enums"]["review_decision"]
+          findings?: Json | null
+          form_section?: Json | null
+          homeowner_message?: string | null
+          id?: string
+          is_final?: boolean
+          model?: string | null
+          reviewer_id?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          decision?: Database["public"]["Enums"]["review_decision"]
+          findings?: Json | null
+          form_section?: Json | null
+          homeowner_message?: string | null
+          id?: string
+          is_final?: boolean
+          model?: string | null
+          reviewer_id?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arc_reviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hoa_guidelines: {
+        Row: {
+          created_at: string
+          extracted_text: string | null
+          id: string
+          is_active: boolean
+          storage_path: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          extracted_text?: string | null
+          id?: string
+          is_active?: boolean
+          storage_path: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          extracted_text?: string | null
+          id?: string
+          is_active?: boolean
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          application_id: string
+          body: string
+          created_at: string
+          id: string
+          is_system: boolean
+          sender_id: string
+        }
+        Insert: {
+          application_id: string
+          body: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          sender_id: string
+        }
+        Update: {
+          application_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "homeowner" | "reviewer" | "admin"
+      application_status:
+        | "submitted"
+        | "in_review"
+        | "approved"
+        | "conditional"
+        | "rejected"
+        | "changes_requested"
+      review_decision: "approved" | "conditional" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +419,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["homeowner", "reviewer", "admin"],
+      application_status: [
+        "submitted",
+        "in_review",
+        "approved",
+        "conditional",
+        "rejected",
+        "changes_requested",
+      ],
+      review_decision: ["approved", "conditional", "rejected"],
+    },
   },
 } as const
