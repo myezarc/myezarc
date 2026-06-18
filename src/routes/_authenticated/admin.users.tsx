@@ -50,17 +50,30 @@ function UsersAdmin() {
             <thead className="border-b border-border bg-surface text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="p-4">User</th>
+                <th className="p-4">Address</th>
+                <th className="p-4">Phone</th>
                 <th className="p-4">Roles</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {users.map((u) => (
                 <tr key={u.user_id}>
-                  <td className="p-4">
+                  <td className="p-4 align-top">
                     <p className="font-semibold text-brand">{u.full_name || u.email || u.user_id}</p>
                     {u.email && <p className="text-xs text-muted-foreground">{u.email}</p>}
+                    {u.membership_status && (
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {u.membership_status}
+                      </p>
+                    )}
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 align-top text-xs text-muted-foreground">
+                    {u.address || <span className="italic">—</span>}
+                  </td>
+                  <td className="p-4 align-top text-xs text-muted-foreground">
+                    {u.phone || <span className="italic">—</span>}
+                  </td>
+                  <td className="p-4 align-top">
                     <div className="flex flex-wrap gap-2">
                       {ROLES.map((r) => {
                         const has = u.roles.includes(r);
