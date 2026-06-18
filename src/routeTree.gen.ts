@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedReviewRouteImport } from './routes/_authenticated/review'
 import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
 import { Route as AuthenticatedMembershipRouteImport } from './routes/_authenticated/membership'
+import { Route as AuthenticatedGithubSetupRouteImport } from './routes/_authenticated/github-setup'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedApplyRouteImport } from './routes/_authenticated/apply'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
@@ -53,6 +54,12 @@ const AuthenticatedMembershipRoute = AuthenticatedMembershipRouteImport.update({
   path: '/membership',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGithubSetupRoute =
+  AuthenticatedGithubSetupRouteImport.update({
+    id: '/github-setup',
+    path: '/github-setup',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/github-setup': typeof AuthenticatedGithubSetupRoute
   '/membership': typeof AuthenticatedMembershipRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/github-setup': typeof AuthenticatedGithubSetupRoute
   '/membership': typeof AuthenticatedMembershipRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
@@ -136,6 +145,7 @@ export interface FileRoutesById {
   '/_authenticated/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/github-setup': typeof AuthenticatedGithubSetupRoute
   '/_authenticated/membership': typeof AuthenticatedMembershipRoute
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/review': typeof AuthenticatedReviewRouteWithChildren
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/github-setup'
     | '/membership'
     | '/resources'
     | '/review'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/github-setup'
     | '/membership'
     | '/resources'
     | '/review'
@@ -184,6 +196,7 @@ export interface FileRouteTypes {
     | '/_authenticated/applications'
     | '/_authenticated/apply'
     | '/_authenticated/dashboard'
+    | '/_authenticated/github-setup'
     | '/_authenticated/membership'
     | '/_authenticated/resources'
     | '/_authenticated/review'
@@ -242,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/membership'
       fullPath: '/membership'
       preLoaderRoute: typeof AuthenticatedMembershipRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/github-setup': {
+      id: '/_authenticated/github-setup'
+      path: '/github-setup'
+      fullPath: '/github-setup'
+      preLoaderRoute: typeof AuthenticatedGithubSetupRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -332,6 +352,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRouteWithChildren
   AuthenticatedApplyRoute: typeof AuthenticatedApplyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedGithubSetupRoute: typeof AuthenticatedGithubSetupRoute
   AuthenticatedMembershipRoute: typeof AuthenticatedMembershipRoute
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedReviewRoute: typeof AuthenticatedReviewRouteWithChildren
@@ -344,6 +365,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApplicationsRoute: AuthenticatedApplicationsRouteWithChildren,
   AuthenticatedApplyRoute: AuthenticatedApplyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedGithubSetupRoute: AuthenticatedGithubSetupRoute,
   AuthenticatedMembershipRoute: AuthenticatedMembershipRoute,
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedReviewRoute: AuthenticatedReviewRouteWithChildren,
@@ -363,3 +385,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
