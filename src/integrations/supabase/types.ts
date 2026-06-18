@@ -61,6 +61,7 @@ export type Database = {
           created_at: string
           description: string | null
           extracted_text: string | null
+          hoa_id: string | null
           homeowner_email: string | null
           homeowner_id: string
           id: string
@@ -74,6 +75,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           extracted_text?: string | null
+          hoa_id?: string | null
           homeowner_email?: string | null
           homeowner_id: string
           id?: string
@@ -87,6 +89,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           extracted_text?: string | null
+          hoa_id?: string | null
           homeowner_email?: string | null
           homeowner_id?: string
           id?: string
@@ -95,7 +98,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applications_hoa_id_fkey"
+            columns: ["hoa_id"]
+            isOneToOne: false
+            referencedRelation: "hoas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       arc_reviews: {
         Row: {
@@ -180,6 +191,101 @@ export type Database = {
           title?: string
           updated_at?: string
           uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      hoa_memberships: {
+        Row: {
+          city: string
+          created_at: string
+          email: string
+          hoa_id: string
+          id: string
+          note: string | null
+          phone: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          state: string
+          status: Database["public"]["Enums"]["membership_status"]
+          street_address: string
+          unit: string | null
+          updated_at: string
+          user_id: string
+          zip: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          email: string
+          hoa_id: string
+          id?: string
+          note?: string | null
+          phone: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state: string
+          status?: Database["public"]["Enums"]["membership_status"]
+          street_address: string
+          unit?: string | null
+          updated_at?: string
+          user_id: string
+          zip: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          email?: string
+          hoa_id?: string
+          id?: string
+          note?: string | null
+          phone?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state?: string
+          status?: Database["public"]["Enums"]["membership_status"]
+          street_address?: string
+          unit?: string | null
+          updated_at?: string
+          user_id?: string
+          zip?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hoa_memberships_hoa_id_fkey"
+            columns: ["hoa_id"]
+            isOneToOne: false
+            referencedRelation: "hoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hoas: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -281,6 +387,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_approved_member: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
@@ -292,6 +399,7 @@ export type Database = {
         | "conditional"
         | "rejected"
         | "changes_requested"
+      membership_status: "pending" | "approved" | "rejected"
       review_decision: "approved" | "conditional" | "rejected"
     }
     CompositeTypes: {
@@ -429,6 +537,7 @@ export const Constants = {
         "rejected",
         "changes_requested",
       ],
+      membership_status: ["pending", "approved", "rejected"],
       review_decision: ["approved", "conditional", "rejected"],
     },
   },

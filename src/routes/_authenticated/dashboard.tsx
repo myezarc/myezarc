@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, ClipboardList, FileText, Shield, Sparkles, BookOpen } from "lucide-react";
+import { ArrowRight, ClipboardList, FileText, Shield, Sparkles, BookOpen, UserCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { claimFirstAdmin } from "@/lib/admin.functions";
+import { useMembership } from "@/hooks/use-membership";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Ez-ARC" }] }),
@@ -13,7 +14,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { user, isStaff, isAdmin, roles } = useAuth();
-  const [stats, setStats] = useState<{ mine: number; queue: number }>({ mine: 0, queue: 0 });
+  const { status: memberStatus } = useMembership();
+  const [stats, setStats] = useState<{ mine: number; queue: number; pendingMembers: number }>({ mine: 0, queue: 0, pendingMembers: 0 });
   const [hasGuideline, setHasGuideline] = useState<boolean | null>(null);
   const [adminCount, setAdminCount] = useState<number | null>(null);
   const claim = useServerFn(claimFirstAdmin);
@@ -34,7 +36,15 @@ function Dashboard() {
           .in("status", ["submitted", "in_review"]);
         queue = count ?? 0;
       }
-      setStats({ mine: mine ?? 0, queue });
+      let pendingMembers = 0;
+      if (isAdmin) {
+        const { count: pm } = await supabase
+          .from("hoa_memberships")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
+        pendingMembers = pm ?? 0;
+      }
+      setStats({ mine: mine ?? 0, queue, pendingMembers });
       const { data: g } = await supabase
         .from("hoa_guidelines")
         .select("id")
@@ -90,11 +100,46 @@ function Dashboard() {
         </div>
       )}
 
+      {!isStaff && memberStatus && memberStatus !== "approved" && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div>
+            <p className="font-display font-bold text-amber-900">
+              {memberStatus === "pending"
+                ? "Membership pending"
+                : memberStatus === "rejected"
+                ? "Membership rejected"
+                : "Park Avenue HOA membership required"}
+            </p>
+            <p className="text-sm text-amber-800">
+              {memberStatus === "pending"
+                ? "An admin is reviewing your request to join Park Avenue HOA."
+                : memberStatus === "rejected"
+                ? "Update your information and resubmit."
+                : "Submit your address and contact info to be approved as a member."}
+            </p>
+          </div>
+          <Link
+            to="/membership"
+            className="rounded-lg bg-amber-900 px-4 py-2 text-sm font-bold text-amber-50 hover:opacity-90"
+          >
+            {memberStatus === "none" ? "Request membership" : "View"}
+          </Link>
+        </div>
+      )}
+
       <div className="grid gap-5 md:grid-cols-3">
         <Card to="/apply" icon={FileText} title="Submit a request" desc="Upload your application PDF and we'll route it to your ARC committee." />
         <Card to="/applications" icon={ClipboardList} title={`My applications (${stats.mine})`} desc="Track status, read decisions, and message the committee." />
         {isStaff && (
           <Card to="/review" icon={Shield} title={`Review queue (${stats.queue})`} desc="Pending applications waiting for AI-assisted review." />
+        )}
+        {isAdmin && (
+          <Card
+            to="/admin/memberships"
+            icon={UserCheck}
+            title={`HOA memberships (${stats.pendingMembers})`}
+            desc={stats.pendingMembers ? "Pending member requests waiting for review." : "Approve or reject homeowner membership requests."}
+          />
         )}
         {isAdmin && (
           <Card

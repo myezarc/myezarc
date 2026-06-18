@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen } from "lucide-react";
+import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,7 +28,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/dashboard" icon={Home} label="Dashboard" />
             <NavLink to="/apply" icon={FileText} label="New application" />
             <NavLink to="/applications" icon={ClipboardList} label="My applications" />
+            {!isStaff && <NavLink to="/membership" icon={UserCheck} label="Membership" />}
             {isStaff && <NavLink to="/review" icon={Shield} label="Review queue" />}
+            {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
             {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />}
             {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
           </nav>
@@ -46,7 +48,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavLink to="/dashboard" icon={Home} label="Home" />
           <NavLink to="/apply" icon={FileText} label="New" />
           <NavLink to="/applications" icon={ClipboardList} label="Mine" />
+          {!isStaff && <NavLink to="/membership" icon={UserCheck} label="HOA" />}
           {isStaff && <NavLink to="/review" icon={Shield} label="Queue" />}
+          {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
           {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />}
           {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
         </div>

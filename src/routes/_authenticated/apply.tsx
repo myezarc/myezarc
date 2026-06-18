@@ -8,9 +8,15 @@ import { extractTextFromFile } from "@/lib/extract-text";
 import { ocrImages } from "@/lib/ocr.functions";
 import { createApplication } from "@/lib/applications.functions";
 
+import { MembershipGate } from "@/components/membership-gate";
+
 export const Route = createFileRoute("/_authenticated/apply")({
   head: () => ({ meta: [{ title: "New ARC application — Ez-ARC" }] }),
-  component: ApplyPage,
+  component: () => (
+    <MembershipGate>
+      <ApplyPage />
+    </MembershipGate>
+  ),
 });
 
 function ApplyPage() {
