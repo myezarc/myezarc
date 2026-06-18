@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listUsersWithRoles, setUserRole } from "@/lib/admin.functions";
+import { decideMembership } from "@/lib/membership.functions";
 import { Loader2 } from "lucide-react";
 
 const ROLES = ["homeowner", "reviewer", "admin"] as const;
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 function UsersAdmin() {
   const list = useServerFn(listUsersWithRoles);
   const setRole = useServerFn(setUserRole);
+  const decide = useServerFn(decideMembership);
   const [users, setUsers] = useState<any[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -34,6 +36,23 @@ function UsersAdmin() {
       setBusy(null);
     }
   };
+
+  const decideMember = async (membershipId: string, status: "approved" | "rejected") => {
+    let reason: string | undefined;
+    if (status === "rejected") {
+      reason = window.prompt("Rejection reason (optional)") ?? undefined;
+    }
+    setBusy(`m:${membershipId}`);
+    try {
+      await decide({ data: { id: membershipId, status, rejection_reason: reason } });
+      await reload();
+    } catch (e: any) {
+      alert(e?.message ?? "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
 
   return (
     <div>
@@ -62,9 +81,38 @@ function UsersAdmin() {
                     <p className="font-semibold text-brand">{u.full_name || u.email || u.user_id}</p>
                     {u.email && <p className="text-xs text-muted-foreground">{u.email}</p>}
                     {u.membership_status && (
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        {u.membership_status}
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider ${
+                            u.membership_status === "approved"
+                              ? "text-emerald-700"
+                              : u.membership_status === "rejected"
+                                ? "text-red-700"
+                                : "text-amber-700"
+                          }`}
+                        >
+                          {u.membership_status}
+                        </span>
+                        {u.membership_id && u.membership_status !== "approved" && (
+                          <button
+                            onClick={() => decideMember(u.membership_id, "approved")}
+                            disabled={busy === `m:${u.membership_id}`}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {busy === `m:${u.membership_id}` && <Loader2 className="size-3 animate-spin" />}
+                            Approve
+                          </button>
+                        )}
+                        {u.membership_id && u.membership_status === "pending" && (
+                          <button
+                            onClick={() => decideMember(u.membership_id, "rejected")}
+                            disabled={busy === `m:${u.membership_id}`}
+                            className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-background disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="p-4 align-top text-xs text-muted-foreground">

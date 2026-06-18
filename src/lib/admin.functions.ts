@@ -32,7 +32,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
     });
     const { data: memberships } = await supabaseAdmin
       .from("hoa_memberships")
-      .select("user_id,status,street_address,unit,city,state,zip,phone,email,updated_at")
+      .select("id,user_id,status,street_address,unit,city,state,zip,phone,email,updated_at")
       .order("updated_at", { ascending: false });
     const memByUser = new Map<string, any>();
     (memberships ?? []).forEach((m: any) => {
@@ -46,6 +46,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       return {
         ...p,
         roles: byUser.get(p.user_id) ?? [],
+        membership_id: m?.id ?? null,
         membership_status: m?.status ?? null,
         phone: m?.phone ?? null,
         address: m
