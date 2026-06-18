@@ -34,6 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
             {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />}
             {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+            <NavLink to="/github-setup" icon={Github} label="GitHub" />
           </nav>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground md:inline">{user?.email}</span>
