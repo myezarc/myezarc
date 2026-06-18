@@ -5,6 +5,7 @@ import { AlertTriangle, BookOpen, Loader2, UploadCloud, FileText, X } from "luci
 import { extractTextFromFile } from "@/lib/extract-text";
 import { ocrImages } from "@/lib/ocr.functions";
 import { uploadGuideline, getActiveGuideline } from "@/lib/guidelines.functions";
+import { uploadArcForm, getActiveArcForm } from "@/lib/resources.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin/guidelines")({
