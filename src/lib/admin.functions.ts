@@ -30,10 +30,35 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       arr.push(r.role);
       byUser.set(r.user_id, arr);
     });
-    return (profiles ?? []).map((p) => ({
-      ...p,
-      roles: byUser.get(p.user_id) ?? [],
-    }));
+    const { data: memberships } = await supabaseAdmin
+      .from("hoa_memberships")
+      .select("user_id,status,street_address,unit,city,state,zip,phone,email,updated_at")
+      .order("updated_at", { ascending: false });
+    const memByUser = new Map<string, any>();
+    (memberships ?? []).forEach((m: any) => {
+      const existing = memByUser.get(m.user_id);
+      if (!existing || (m.status === "approved" && existing.status !== "approved")) {
+        memByUser.set(m.user_id, m);
+      }
+    });
+    return (profiles ?? []).map((p) => {
+      const m = memByUser.get(p.user_id);
+      return {
+        ...p,
+        roles: byUser.get(p.user_id) ?? [],
+        membership_status: m?.status ?? null,
+        phone: m?.phone ?? null,
+        address: m
+          ? [
+              [m.street_address, m.unit].filter(Boolean).join(" "),
+              m.city,
+              [m.state, m.zip].filter(Boolean).join(" "),
+            ]
+              .filter((s) => s && s.trim())
+              .join(", ")
+          : null,
+      };
+    });
   });
 
 const RoleSchema = z.object({
