@@ -1,0 +1,142 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { ArrowRight, ClipboardList, FileText, Shield, Sparkles, BookOpen } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { claimFirstAdmin } from "@/lib/admin.functions";
+
+export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({ meta: [{ title: "Dashboard — Ez-ARC" }] }),
+  component: Dashboard,
+});
+
+function Dashboard() {
+  const { user, isStaff, isAdmin, roles } = useAuth();
+  const [stats, setStats] = useState<{ mine: number; queue: number }>({ mine: 0, queue: 0 });
+  const [hasGuideline, setHasGuideline] = useState<boolean | null>(null);
+  const [adminCount, setAdminCount] = useState<number | null>(null);
+  const claim = useServerFn(claimFirstAdmin);
+  const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { count: mine } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .eq("homeowner_id", user.id);
+      let queue = 0;
+      if (isStaff) {
+        const { count } = await supabase
+          .from("applications")
+          .select("*", { count: "exact", head: true })
+          .in("status", ["submitted", "in_review"]);
+        queue = count ?? 0;
+      }
+      setStats({ mine: mine ?? 0, queue });
+      const { data: g } = await supabase
+        .from("hoa_guidelines")
+        .select("id")
+        .eq("is_active", true)
+        .limit(1);
+      setHasGuideline((g ?? []).length > 0);
+      const { count: ac } = await supabase
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "admin");
+      setAdminCount(ac ?? 0);
+    })();
+  }, [user, isStaff]);
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    try {
+      await claim();
+      window.location.reload();
+    } catch (e: any) {
+      alert(e?.message ?? "Failed");
+      setClaiming(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-8">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Welcome</p>
+        <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
+          Hi{user?.email ? `, ${user.email}` : ""} 👋
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Roles: {roles.length ? roles.join(", ") : "homeowner"}
+        </p>
+      </div>
+
+      {adminCount === 0 && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div>
+            <p className="font-display font-bold text-amber-900">No admin yet</p>
+            <p className="text-sm text-amber-800">
+              Claim admin to upload the HOA guideline and manage users.
+            </p>
+          </div>
+          <button
+            onClick={handleClaim}
+            disabled={claiming}
+            className="rounded-lg bg-amber-900 px-4 py-2 text-sm font-bold text-amber-50 hover:opacity-90 disabled:opacity-50"
+          >
+            {claiming ? "Claiming…" : "Claim admin"}
+          </button>
+        </div>
+      )}
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <Card to="/apply" icon={FileText} title="Submit a request" desc="Upload your application PDF and we'll route it to your ARC committee." />
+        <Card to="/applications" icon={ClipboardList} title={`My applications (${stats.mine})`} desc="Track status, read decisions, and message the committee." />
+        {isStaff && (
+          <Card to="/review" icon={Shield} title={`Review queue (${stats.queue})`} desc="Pending applications waiting for AI-assisted review." />
+        )}
+        {isAdmin && (
+          <Card
+            to="/admin/guidelines"
+            icon={BookOpen}
+            title="HOA guideline"
+            desc={hasGuideline ? "Active guideline uploaded." : "Upload your HOA guideline PDF."}
+          />
+        )}
+      </div>
+
+      <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
+        <div className="flex items-start gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+            <Sparkles className="size-5" />
+          </div>
+          <div>
+            <p className="font-display font-bold text-brand">How it works</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Upload your application PDF → reviewers run an AI check against the active HOA guideline → committee finalizes a decision and messages you back.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Card({ to, icon: Icon, title, desc }: { to: string; icon: any; title: string; desc: string }) {
+  return (
+    <Link
+      to={to}
+      className="group rounded-2xl border border-border bg-background p-6 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+    >
+      <div className="mb-4 grid size-10 place-items-center rounded-xl bg-accent/10 text-accent">
+        <Icon className="size-5" />
+      </div>
+      <p className="font-display text-lg font-bold text-brand">{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+      <p className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent group-hover:gap-2 transition-all">
+        Open <ArrowRight className="size-4" />
+      </p>
+    </Link>
+  );
+}
