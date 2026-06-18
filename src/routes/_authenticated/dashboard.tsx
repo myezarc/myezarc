@@ -80,7 +80,7 @@ function Dashboard() {
       <div className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Welcome</p>
         <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
-          Hi{user?.email ? `, ${user.email}` : ""} 👋
+          Hi{fullName ? `, ${fullName}` : ""} 👋
         </h1>
         <p className="mt-2 text-muted-foreground">
           Roles: {roles.length ? roles.join(", ") : "homeowner"}
