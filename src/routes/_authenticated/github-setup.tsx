@@ -46,7 +46,7 @@ const STEPS = [
 
 function GithubSetup() {
   const [openStep, setOpenStep] = useState<string>("create-repo");
-  const [completed, setCompleted] = useState<Set<string>>(new Set() unpacked = new Set());
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
 
   const toggleStep = (id: string) => {
     setOpenStep((prev) => (prev === id ? "" : id));
