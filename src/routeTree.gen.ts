@@ -13,9 +13,14 @@ import { Route as ReviewRouteImport } from './routes/review'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedReviewRouteImport } from './routes/_authenticated/review'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedApplyRouteImport } from './routes/_authenticated/apply'
 import { Route as AuthenticatedApplicationsRouteImport } from './routes/_authenticated/applications'
+import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticated/review.$id'
+import { Route as AuthenticatedApplicationsIdRouteImport } from './routes/_authenticated/applications.$id'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
+import { Route as AuthenticatedAdminGuidelinesRouteImport } from './routes/_authenticated/admin.guidelines'
 
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
@@ -36,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedReviewRoute = AuthenticatedReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -52,22 +62,52 @@ const AuthenticatedApplicationsRoute =
     path: '/applications',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReviewIdRoute = AuthenticatedReviewIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedReviewRoute,
+} as any)
+const AuthenticatedApplicationsIdRoute =
+  AuthenticatedApplicationsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedApplicationsRoute,
+  } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminGuidelinesRoute =
+  AuthenticatedAdminGuidelinesRouteImport.update({
+    id: '/admin/guidelines',
+    path: '/admin/guidelines',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/review': typeof ReviewRoute
-  '/applications': typeof AuthenticatedApplicationsRoute
+  '/review': typeof AuthenticatedReviewRouteWithChildren
+  '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/applications/$id': typeof AuthenticatedApplicationsIdRoute
+  '/review/$id': typeof AuthenticatedReviewIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/review': typeof ReviewRoute
-  '/applications': typeof AuthenticatedApplicationsRoute
+  '/review': typeof AuthenticatedReviewRouteWithChildren
+  '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/applications/$id': typeof AuthenticatedApplicationsIdRoute
+  '/review/$id': typeof AuthenticatedReviewIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -75,9 +115,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/review': typeof ReviewRoute
-  '/_authenticated/applications': typeof AuthenticatedApplicationsRoute
+  '/_authenticated/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/review': typeof AuthenticatedReviewRouteWithChildren
+  '/_authenticated/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/applications/$id': typeof AuthenticatedApplicationsIdRoute
+  '/_authenticated/review/$id': typeof AuthenticatedReviewIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,8 +133,22 @@ export interface FileRouteTypes {
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/admin/guidelines'
+    | '/admin/users'
+    | '/applications/$id'
+    | '/review/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/review' | '/applications' | '/apply' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/review'
+    | '/applications'
+    | '/apply'
+    | '/dashboard'
+    | '/admin/guidelines'
+    | '/admin/users'
+    | '/applications/$id'
+    | '/review/$id'
   id:
     | '__root__'
     | '/'
@@ -99,6 +158,11 @@ export interface FileRouteTypes {
     | '/_authenticated/applications'
     | '/_authenticated/apply'
     | '/_authenticated/dashboard'
+    | '/_authenticated/review'
+    | '/_authenticated/admin/guidelines'
+    | '/_authenticated/admin/users'
+    | '/_authenticated/applications/$id'
+    | '/_authenticated/review/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -138,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/review': {
+      id: '/_authenticated/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof AuthenticatedReviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -159,19 +230,78 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedApplicationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/review/$id': {
+      id: '/_authenticated/review/$id'
+      path: '/$id'
+      fullPath: '/review/$id'
+      preLoaderRoute: typeof AuthenticatedReviewIdRouteImport
+      parentRoute: typeof AuthenticatedReviewRoute
+    }
+    '/_authenticated/applications/$id': {
+      id: '/_authenticated/applications/$id'
+      path: '/$id'
+      fullPath: '/applications/$id'
+      preLoaderRoute: typeof AuthenticatedApplicationsIdRouteImport
+      parentRoute: typeof AuthenticatedApplicationsRoute
+    }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/guidelines': {
+      id: '/_authenticated/admin/guidelines'
+      path: '/admin/guidelines'
+      fullPath: '/admin/guidelines'
+      preLoaderRoute: typeof AuthenticatedAdminGuidelinesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedApplicationsRouteChildren {
+  AuthenticatedApplicationsIdRoute: typeof AuthenticatedApplicationsIdRoute
+}
+
+const AuthenticatedApplicationsRouteChildren: AuthenticatedApplicationsRouteChildren =
+  {
+    AuthenticatedApplicationsIdRoute: AuthenticatedApplicationsIdRoute,
+  }
+
+const AuthenticatedApplicationsRouteWithChildren =
+  AuthenticatedApplicationsRoute._addFileChildren(
+    AuthenticatedApplicationsRouteChildren,
+  )
+
+interface AuthenticatedReviewRouteChildren {
+  AuthenticatedReviewIdRoute: typeof AuthenticatedReviewIdRoute
+}
+
+const AuthenticatedReviewRouteChildren: AuthenticatedReviewRouteChildren = {
+  AuthenticatedReviewIdRoute: AuthenticatedReviewIdRoute,
+}
+
+const AuthenticatedReviewRouteWithChildren =
+  AuthenticatedReviewRoute._addFileChildren(AuthenticatedReviewRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
+  AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRouteWithChildren
   AuthenticatedApplyRoute: typeof AuthenticatedApplyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedReviewRoute: typeof AuthenticatedReviewRouteWithChildren
+  AuthenticatedAdminGuidelinesRoute: typeof AuthenticatedAdminGuidelinesRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedApplicationsRoute: AuthenticatedApplicationsRoute,
+  AuthenticatedApplicationsRoute: AuthenticatedApplicationsRouteWithChildren,
   AuthenticatedApplyRoute: AuthenticatedApplyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedReviewRoute: AuthenticatedReviewRouteWithChildren,
+  AuthenticatedAdminGuidelinesRoute: AuthenticatedAdminGuidelinesRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
