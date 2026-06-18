@@ -161,6 +161,36 @@ export type Database = {
           },
         ]
       }
+      hoa_forms: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          storage_path: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          storage_path: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          storage_path?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       hoa_guidelines: {
         Row: {
           created_at: string
