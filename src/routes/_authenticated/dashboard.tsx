@@ -55,6 +55,12 @@ function Dashboard() {
       setHasGuideline((g ?? []).length > 0);
       const ac = await fetchAdminCount();
       setAdminCount(ac);
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      setFullName(prof?.full_name ?? null);
     })();
   }, [user, isStaff, isAdmin]);
 
