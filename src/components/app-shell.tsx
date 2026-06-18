@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck, FolderDown } from "lucide-react";
+import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck, FolderDown, Github } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
