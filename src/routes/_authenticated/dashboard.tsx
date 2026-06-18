@@ -4,7 +4,7 @@ import { ArrowRight, ClipboardList, FileText, Shield, Sparkles, BookOpen, UserCh
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { claimFirstAdmin } from "@/lib/admin.functions";
+import { claimFirstAdmin, getAdminCount } from "@/lib/admin.functions";
 import { useMembership } from "@/hooks/use-membership";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -19,6 +19,7 @@ function Dashboard() {
   const [hasGuideline, setHasGuideline] = useState<boolean | null>(null);
   const [adminCount, setAdminCount] = useState<number | null>(null);
   const claim = useServerFn(claimFirstAdmin);
+  const fetchAdminCount = useServerFn(getAdminCount);
   const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
@@ -51,13 +52,10 @@ function Dashboard() {
         .eq("is_active", true)
         .limit(1);
       setHasGuideline((g ?? []).length > 0);
-      const { count: ac } = await supabase
-        .from("user_roles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "admin");
-      setAdminCount(ac ?? 0);
+      const ac = await fetchAdminCount();
+      setAdminCount(ac);
     })();
-  }, [user, isStaff]);
+  }, [user, isStaff, isAdmin, fetchAdminCount]);
 
   const handleClaim = async () => {
     setClaiming(true);
