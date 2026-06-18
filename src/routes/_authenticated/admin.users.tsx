@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listUsersWithRoles, setUserRole } from "@/lib/admin.functions";
+import { decideMembership } from "@/lib/membership.functions";
 import { Loader2 } from "lucide-react";
 
 const ROLES = ["homeowner", "reviewer", "admin"] as const;
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 function UsersAdmin() {
   const list = useServerFn(listUsersWithRoles);
   const setRole = useServerFn(setUserRole);
+  const decide = useServerFn(decideMembership);
   const [users, setUsers] = useState<any[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -34,6 +36,23 @@ function UsersAdmin() {
       setBusy(null);
     }
   };
+
+  const decideMember = async (membershipId: string, status: "approved" | "rejected") => {
+    let reason: string | undefined;
+    if (status === "rejected") {
+      reason = window.prompt("Rejection reason (optional)") ?? undefined;
+    }
+    setBusy(`m:${membershipId}`);
+    try {
+      await decide({ data: { id: membershipId, status, rejection_reason: reason } });
+      await reload();
+    } catch (e: any) {
+      alert(e?.message ?? "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
 
   return (
     <div>
