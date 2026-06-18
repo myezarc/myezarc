@@ -143,7 +143,8 @@ export const decideMembership = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => DecideSchema.parse(input))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: updated, error } = await supabaseAdmin
       .from("hoa_memberships")
       .update({
         status: data.status,
@@ -152,7 +153,10 @@ export const decideMembership = createServerFn({ method: "POST" })
         reviewed_by: context.userId,
         reviewed_at: new Date().toISOString(),
       })
-      .eq("id", data.id);
+      .eq("id", data.id)
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!updated || updated.length === 0)
+      throw new Error("Membership not found or update blocked");
     return { ok: true };
   });
