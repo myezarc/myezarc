@@ -18,6 +18,7 @@ function Dashboard() {
   const [stats, setStats] = useState<{ mine: number; queue: number; pendingMembers: number }>({ mine: 0, queue: 0, pendingMembers: 0 });
   const [hasGuideline, setHasGuideline] = useState<boolean | null>(null);
   const [adminCount, setAdminCount] = useState<number | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
   const claim = useServerFn(claimFirstAdmin);
   const fetchAdminCount = useServerFn(getAdminCount);
   const [claiming, setClaiming] = useState(false);
