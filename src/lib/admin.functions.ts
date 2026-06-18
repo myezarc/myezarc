@@ -46,6 +46,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       return {
         ...p,
         roles: byUser.get(p.user_id) ?? [],
+        membership_id: m?.id ?? null,
         membership_status: m?.status ?? null,
         phone: m?.phone ?? null,
         address: m
