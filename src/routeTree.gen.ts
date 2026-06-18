@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ReviewRouteImport } from './routes/review'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,11 +21,6 @@ import { Route as AuthenticatedApplicationsIdRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminGuidelinesRouteImport } from './routes/_authenticated/admin.guidelines'
 
-const ReviewRoute = ReviewRouteImport.update({
-  id: '/review',
-  path: '/review',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -88,10 +82,10 @@ const AuthenticatedAdminGuidelinesRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/review': typeof AuthenticatedReviewRouteWithChildren
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/applications/$id': typeof AuthenticatedApplicationsIdRoute
@@ -100,10 +94,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/review': typeof AuthenticatedReviewRouteWithChildren
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/applications/$id': typeof AuthenticatedApplicationsIdRoute
@@ -114,7 +108,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/review': typeof ReviewRoute
   '/_authenticated/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -129,10 +122,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/review'
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/review'
     | '/admin/guidelines'
     | '/admin/users'
     | '/applications/$id'
@@ -141,10 +134,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/review'
     | '/applications'
     | '/apply'
     | '/dashboard'
+    | '/review'
     | '/admin/guidelines'
     | '/admin/users'
     | '/applications/$id'
@@ -154,7 +147,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/review'
     | '/_authenticated/applications'
     | '/_authenticated/apply'
     | '/_authenticated/dashboard'
@@ -169,18 +161,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ReviewRoute: typeof ReviewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/review': {
-      id: '/review'
-      path: '/review'
-      fullPath: '/review'
-      preLoaderRoute: typeof ReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -311,7 +295,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ReviewRoute: ReviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

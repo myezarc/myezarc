@@ -68,14 +68,17 @@ function Nav() {
         <a href="#pricing" className="transition-colors hover:text-brand">Pricing</a>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
-        <button className="hidden px-4 py-2 text-sm font-semibold text-foreground sm:inline-flex">
-          Log in
-        </button>
         <Link
-          to="/review"
+          to="/auth"
+          className="hidden px-4 py-2 text-sm font-semibold text-foreground sm:inline-flex"
+        >
+          Log in
+        </Link>
+        <Link
+          to="/auth"
           className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground shadow-sm transition-all hover:bg-brand/90"
         >
-          Start a Review
+          Get started
         </Link>
       </div>
     </nav>
@@ -102,10 +105,10 @@ function Hero() {
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
           <Link
-            to="/review"
+            to="/auth"
             className="rounded-xl bg-brand px-8 py-4 text-center font-bold text-brand-foreground shadow-lg transition-all hover:-translate-y-0.5"
           >
-            Start a Review
+            Get started
           </Link>
           <a
             href="#workflow"
@@ -306,10 +309,10 @@ function CTA() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
-              to="/review"
+              to="/auth"
               className="rounded-xl bg-brand-foreground px-10 py-4 font-bold text-brand shadow-xl transition-all hover:bg-brand-foreground/90"
             >
-              Start a Review
+              Get started
             </Link>
             <Link
               to="/"
