@@ -55,7 +55,7 @@ function Dashboard() {
       const ac = await fetchAdminCount();
       setAdminCount(ac);
     })();
-  }, [user, isStaff, isAdmin, fetchAdminCount]);
+  }, [user, isStaff, isAdmin]);
 
   const handleClaim = async () => {
     setClaiming(true);
