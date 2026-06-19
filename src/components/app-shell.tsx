@@ -1,5 +1,17 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck, FolderDown, Github } from "lucide-react";
+import {
+  LogOut,
+  Home,
+  FileText,
+  ClipboardList,
+  Shield,
+  Users,
+  BookOpen,
+  UserCheck,
+  FolderDown,
+  Github,
+  Building2,
+} from "lucide-react";
 import { type RoleViewMode, useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -44,7 +56,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <NavLink to="/membership" icon={UserCheck} label="Membership" />
             )}
             <NavLink to="/resources" icon={FolderDown} label="Resources" />
-            {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Review queue" />}
+            {(isArcReviewer || isAdmin) && (
+              <NavLink to="/review" icon={Shield} label="Review queue" />
+            )}
+            {isGlobalAdmin && <NavLink to="/admin/hoas" icon={Building2} label="HOAs" />}
             {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
             {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />}
             {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
@@ -72,11 +87,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
           <NavLink to="/resources" icon={FolderDown} label="Files" />
           {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Queue" />}
+          {isGlobalAdmin && <NavLink to="/admin/hoas" icon={Building2} label="HOAs" />}
           {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
           {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />}
-            {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
-            <NavLink to="/github-setup" icon={Github} label="GitHub" />
-          </div>
+          {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+          <NavLink to="/github-setup" icon={Github} label="GitHub" />
+        </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-12">{children}</main>
     </div>

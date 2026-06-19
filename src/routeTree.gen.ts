@@ -24,6 +24,7 @@ import { Route as AuthenticatedReviewIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedApplicationsIdRouteImport } from './routes/_authenticated/applications.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin.memberships'
+import { Route as AuthenticatedAdminHoasRouteImport } from './routes/_authenticated/admin.hoas'
 import { Route as AuthenticatedAdminGuidelinesRouteImport } from './routes/_authenticated/admin.guidelines'
 
 const TermsRoute = TermsRouteImport.update({
@@ -104,6 +105,11 @@ const AuthenticatedAdminMembershipsRoute =
     path: '/admin/memberships',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminHoasRoute = AuthenticatedAdminHoasRouteImport.update({
+  id: '/admin/hoas',
+  path: '/admin/hoas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminGuidelinesRoute =
   AuthenticatedAdminGuidelinesRouteImport.update({
     id: '/admin/guidelines',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/resources': typeof AuthenticatedResourcesRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/admin/hoas': typeof AuthenticatedAdminHoasRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/applications/$id': typeof AuthenticatedApplicationsIdRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/resources': typeof AuthenticatedResourcesRoute
   '/review': typeof AuthenticatedReviewRouteWithChildren
   '/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/admin/hoas': typeof AuthenticatedAdminHoasRoute
   '/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/applications/$id': typeof AuthenticatedApplicationsIdRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/review': typeof AuthenticatedReviewRouteWithChildren
   '/_authenticated/admin/guidelines': typeof AuthenticatedAdminGuidelinesRoute
+  '/_authenticated/admin/hoas': typeof AuthenticatedAdminHoasRoute
   '/_authenticated/admin/memberships': typeof AuthenticatedAdminMembershipsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/applications/$id': typeof AuthenticatedApplicationsIdRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/resources'
     | '/review'
     | '/admin/guidelines'
+    | '/admin/hoas'
     | '/admin/memberships'
     | '/admin/users'
     | '/applications/$id'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/resources'
     | '/review'
     | '/admin/guidelines'
+    | '/admin/hoas'
     | '/admin/memberships'
     | '/admin/users'
     | '/applications/$id'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/_authenticated/resources'
     | '/_authenticated/review'
     | '/_authenticated/admin/guidelines'
+    | '/_authenticated/admin/hoas'
     | '/_authenticated/admin/memberships'
     | '/_authenticated/admin/users'
     | '/_authenticated/applications/$id'
@@ -333,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMembershipsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/hoas': {
+      id: '/_authenticated/admin/hoas'
+      path: '/admin/hoas'
+      fullPath: '/admin/hoas'
+      preLoaderRoute: typeof AuthenticatedAdminHoasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/guidelines': {
       id: '/_authenticated/admin/guidelines'
       path: '/admin/guidelines'
@@ -377,6 +396,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedReviewRoute: typeof AuthenticatedReviewRouteWithChildren
   AuthenticatedAdminGuidelinesRoute: typeof AuthenticatedAdminGuidelinesRoute
+  AuthenticatedAdminHoasRoute: typeof AuthenticatedAdminHoasRoute
   AuthenticatedAdminMembershipsRoute: typeof AuthenticatedAdminMembershipsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
 }
@@ -390,6 +410,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedReviewRoute: AuthenticatedReviewRouteWithChildren,
   AuthenticatedAdminGuidelinesRoute: AuthenticatedAdminGuidelinesRoute,
+  AuthenticatedAdminHoasRoute: AuthenticatedAdminHoasRoute,
   AuthenticatedAdminMembershipsRoute: AuthenticatedAdminMembershipsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
 }

@@ -9,6 +9,7 @@ import {
   BookOpen,
   UserCheck,
   Users,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -182,6 +183,14 @@ function Dashboard() {
             icon={Shield}
             title={`Review queue (${stats.queue})`}
             desc="Pending applications waiting for AI-assisted review."
+          />
+        )}
+        {isGlobalAdmin && (
+          <Card
+            to="/admin/hoas"
+            icon={Building2}
+            title="HOA accounts"
+            desc="Review new HOA requests and manage HOA accounts across the platform."
           />
         )}
         {isAdmin && (
