@@ -8,6 +8,17 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await ensureGlobalAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const authUsers = [];
+    for (let page = 1; page < 100; page += 1) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 1000,
+      });
+      if (error) throw new Error(error.message);
+      authUsers.push(...(data.users ?? []));
+      if (!data.users || data.users.length < 1000) break;
+    }
+
     const { data: profiles, error } = await supabaseAdmin
       .from("profiles")
       .select("user_id,full_name,email,created_at")
@@ -23,37 +34,101 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       arr.push(r.role);
       byUser.set(r.user_id, arr);
     });
+    const hoaRolesByUser = new Map<string, any[]>();
+    (hoaRoles ?? []).forEach((role: any) => {
+      const arr = hoaRolesByUser.get(role.user_id) ?? [];
+      arr.push(role);
+      hoaRolesByUser.set(role.user_id, arr);
+    });
     const { data: memberships } = await supabaseAdmin
       .from("hoa_memberships")
-      .select("id,user_id,status,street_address,unit,city,state,zip,phone,email,updated_at")
+      .select(
+        "id,user_id,hoa_id,status,street_address,unit,city,state,zip,phone,email,updated_at,hoa:hoas(id,name)",
+      )
       .order("updated_at", { ascending: false });
-    const memByUser = new Map<string, any>();
+    const membershipsByUser = new Map<string, any[]>();
     (memberships ?? []).forEach((m: any) => {
-      const existing = memByUser.get(m.user_id);
-      if (!existing || (m.status === "approved" && existing.status !== "approved")) {
-        memByUser.set(m.user_id, m);
-      }
+      const arr = membershipsByUser.get(m.user_id) ?? [];
+      arr.push(m);
+      membershipsByUser.set(m.user_id, arr);
     });
-    return (profiles ?? []).map((p) => {
-      const m = memByUser.get(p.user_id);
-      return {
-        ...p,
-        roles: byUser.get(p.user_id) ?? [],
-        hoa_roles: (hoaRoles ?? []).filter((role) => role.user_id === p.user_id),
-        membership_id: m?.id ?? null,
-        membership_status: m?.status ?? null,
-        phone: m?.phone ?? null,
-        address: m
-          ? [
-              [m.street_address, m.unit].filter(Boolean).join(" "),
-              m.city,
-              [m.state, m.zip].filter(Boolean).join(" "),
-            ]
-              .filter((s) => s && s.trim())
-              .join(", ")
-          : null,
-      };
-    });
+    const profilesByUser = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
+    const userIds = new Set<string>([
+      ...authUsers.map((user) => user.id),
+      ...(profiles ?? []).map((profile) => profile.user_id),
+      ...(roles ?? []).map((role) => role.user_id),
+      ...(memberships ?? []).map((membership) => membership.user_id),
+      ...(hoaRoles ?? []).map((role) => role.user_id),
+    ]);
+
+    return Array.from(userIds)
+      .map((userId) => {
+        const authUser = authUsers.find((user) => user.id === userId) ?? null;
+        const p = profilesByUser.get(userId);
+        const userMemberships = membershipsByUser.get(userId) ?? [];
+        const primaryMembership =
+          userMemberships.find((membership) => membership.status === "approved") ??
+          userMemberships[0] ??
+          null;
+        const email = p?.email ?? authUser?.email ?? primaryMembership?.email ?? null;
+        const createdAt = authUser?.created_at ?? p?.created_at ?? null;
+        const bannedUntil = authUser?.banned_until ?? null;
+        const isSuspended =
+          Boolean(bannedUntil) && new Date(bannedUntil).getTime() > new Date().getTime();
+        return {
+          user_id: userId,
+          full_name: p?.full_name ?? authUser?.user_metadata?.full_name ?? null,
+          email,
+          created_at: createdAt,
+          last_sign_in_at: authUser?.last_sign_in_at ?? null,
+          email_confirmed_at: authUser?.email_confirmed_at ?? null,
+          banned_until: bannedUntil,
+          is_suspended: isSuspended,
+          roles: byUser.get(userId) ?? [],
+          hoa_roles: hoaRolesByUser.get(userId) ?? [],
+          memberships: userMemberships,
+          membership_id: primaryMembership?.id ?? null,
+          membership_status: primaryMembership?.status ?? null,
+          phone: primaryMembership?.phone ?? null,
+          address: primaryMembership
+            ? [
+                [primaryMembership.street_address, primaryMembership.unit]
+                  .filter(Boolean)
+                  .join(" "),
+                primaryMembership.city,
+                [primaryMembership.state, primaryMembership.zip].filter(Boolean).join(" "),
+              ]
+                .filter((s) => s && s.trim())
+                .join(", ")
+            : null,
+        };
+      })
+      .sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+  });
+
+const SuspendUserSchema = z.object({
+  userId: z.string().uuid(),
+  suspended: z.boolean(),
+});
+
+export const setUserSuspended = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => SuspendUserSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureGlobalAdmin(context.supabase, context.userId);
+    if (data.userId === context.userId && data.suspended) {
+      throw new Error("You cannot suspend your own Global Admin account.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      ban_duration: data.suspended ? "876000h" : "none",
+    } as any);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const RoleSchema = z.object({
