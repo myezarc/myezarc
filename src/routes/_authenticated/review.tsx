@@ -34,8 +34,12 @@ function ReviewQueue() {
       <p className="mt-2 text-muted-foreground">All applications submitted to the committee.</p>
 
       <div className="mt-6 flex gap-2">
-        <FilterBtn active={filter === "open"} onClick={() => setFilter("open")}>Open</FilterBtn>
-        <FilterBtn active={filter === "all"} onClick={() => setFilter("all")}>All</FilterBtn>
+        <FilterBtn active={filter === "open"} onClick={() => setFilter("open")}>
+          Open
+        </FilterBtn>
+        <FilterBtn active={filter === "all"} onClick={() => setFilter("all")}>
+          All
+        </FilterBtn>
       </div>
 
       {err && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{err}</p>}
@@ -59,6 +63,11 @@ function ReviewQueue() {
                     <p className="text-xs text-muted-foreground">
                       {a.homeowner_email ?? "no email"} · {new Date(a.created_at).toLocaleString()}
                     </p>
+                    {a.hoa?.name && (
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-accent">
+                        {a.hoa.name}
+                      </p>
+                    )}
                   </div>
                   <StatusBadge status={a.status} />
                 </Link>
@@ -71,12 +80,22 @@ function ReviewQueue() {
   );
 }
 
-function FilterBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function FilterBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-        active ? "bg-brand text-brand-foreground" : "border border-border text-muted-foreground hover:bg-surface"
+        active
+          ? "bg-brand text-brand-foreground"
+          : "border border-border text-muted-foreground hover:bg-surface"
       }`}
     >
       {children}

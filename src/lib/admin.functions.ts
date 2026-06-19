@@ -1,15 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-async function ensureAdmin(supabase: any, userId: string) {
-  const { data: roles } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-  if (!(roles ?? []).some((r: { role: string }) => r.role === "admin"))
-    throw new Error("Admins only");
-}
+import { ensureAdmin } from "@/lib/hoa-scope";
 
 export const listUsersWithRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -21,9 +13,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       .select("user_id,full_name,email,created_at")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    const { data: roles } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id,role");
+    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id,role");
     const byUser = new Map<string, string[]>();
     (roles ?? []).forEach((r) => {
       const arr = byUser.get(r.user_id) ?? [];
@@ -78,8 +68,7 @@ export const setUserRole = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin
         .from("user_roles")
         .insert({ user_id: data.userId, role: data.role });
-      if (error && !error.message.includes("duplicate"))
-        throw new Error(error.message);
+      if (error && !error.message.includes("duplicate")) throw new Error(error.message);
     } else {
       const { error } = await supabaseAdmin
         .from("user_roles")
@@ -94,17 +83,8 @@ export const setUserRole = createServerFn({ method: "POST" })
 export const claimFirstAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count, error } = await supabaseAdmin
-      .from("user_roles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "admin");
+    const { error } = await context.supabase.rpc("claim_first_admin");
     if (error) throw new Error(error.message);
-    if ((count ?? 0) > 0) throw new Error("An admin already exists.");
-    const { error: insErr } = await supabaseAdmin
-      .from("user_roles")
-      .insert({ user_id: context.userId, role: "admin" });
-    if (insErr) throw new Error(insErr.message);
     return { ok: true };
   });
 

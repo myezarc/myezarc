@@ -22,8 +22,12 @@ function ResourcesPage() {
 
   return (
     <div className="max-w-3xl">
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Park Avenue HOA</p>
-      <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">Member resources</h1>
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+        {data?.hoa?.name ?? "HOA"}
+      </p>
+      <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
+        Member resources
+      </h1>
       <p className="mt-2 text-muted-foreground">
         Download the architectural guideline and the ARC application form.
       </p>
@@ -87,7 +91,9 @@ function ResourceCard({
           <Icon className="size-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
           <p className="font-display font-bold text-brand">{title ?? empty}</p>
           {createdAt && (
             <p className="text-xs text-muted-foreground">

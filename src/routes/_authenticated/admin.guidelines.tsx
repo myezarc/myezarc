@@ -6,6 +6,7 @@ import { extractTextFromFile } from "@/lib/extract-text";
 import { ocrImages } from "@/lib/ocr.functions";
 import { uploadGuideline, getActiveGuideline } from "@/lib/guidelines.functions";
 import { uploadArcForm, getActiveArcForm } from "@/lib/resources.functions";
+import { listHoas } from "@/lib/membership.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin/guidelines")({
@@ -17,18 +18,38 @@ function GuidelinesAdmin() {
   const ocr = useServerFn(ocrImages);
   const upload = useServerFn(uploadGuideline);
   const get = useServerFn(getActiveGuideline);
+  const fetchHoas = useServerFn(listHoas);
 
   const [active, setActive] = useState<any>(null);
+  const [hoas, setHoas] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedHoaId, setSelectedHoaId] = useState("");
   const [title, setTitle] = useState("HOA Architectural Guidelines");
   const [file, setFile] = useState<File | null>(null);
   const [stage, setStage] = useState<"idle" | "extracting" | "uploading" | "saving">("idle");
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const reload = () => get().then(setActive).catch(() => {});
+  const reload = (hoaId = selectedHoaId) => {
+    if (!hoaId) return Promise.resolve();
+    return get({ data: { hoaId } })
+      .then(setActive)
+      .catch(() => {});
+  };
+  useEffect(() => {
+    (async () => {
+      const rows = await fetchHoas();
+      setHoas(rows);
+      const first = rows[0];
+      if (first) {
+        setSelectedHoaId(first.id);
+        await reload(first.id);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     reload();
-  }, []);
+  }, [selectedHoaId]);
 
   const submit = async () => {
     setErr(null);
@@ -39,13 +60,20 @@ function GuidelinesAdmin() {
       const text = await extractTextFromFile(file, ocr, "HOA guideline");
       if (text.trim().length < 50) throw new Error("Couldn't read enough text from the PDF.");
       setStage("uploading");
-      const path = `guidelines/${crypto.randomUUID()}.pdf`;
+      const path = `guidelines/${selectedHoaId}/${crypto.randomUUID()}.pdf`;
       const { error } = await supabase.storage
         .from("arc-documents")
         .upload(path, file, { contentType: file.type, upsert: false });
       if (error) throw new Error(error.message);
       setStage("saving");
-      await upload({ data: { title: title.trim(), storagePath: path, extractedText: text } });
+      await upload({
+        data: {
+          hoaId: selectedHoaId,
+          title: title.trim(),
+          storagePath: path,
+          extractedText: text,
+        },
+      });
       setInfo("Guideline activated.");
       setFile(null);
       await reload();
@@ -62,8 +90,28 @@ function GuidelinesAdmin() {
     <div className="max-w-3xl">
       <h1 className="font-display text-3xl font-bold text-brand md:text-4xl">HOA Guideline</h1>
       <p className="mt-2 text-muted-foreground">
-        Upload your community's architectural guideline. The AI uses the active guideline for every review.
+        Upload each community's architectural guideline. The AI uses the active guideline for the
+        application's HOA.
       </p>
+
+      {hoas.length > 1 && (
+        <label className="mt-6 block">
+          <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Community
+          </span>
+          <select
+            value={selectedHoaId}
+            onChange={(e) => setSelectedHoaId(e.target.value)}
+            className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
+          >
+            {hoas.map((hoa) => (
+              <option key={hoa.id} value={hoa.id}>
+                {hoa.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="mt-6 rounded-2xl border border-border bg-surface p-5">
         <div className="flex items-start gap-3">
@@ -85,10 +133,14 @@ function GuidelinesAdmin() {
 
       <div className="mt-6 space-y-4 rounded-2xl border border-border bg-background p-6">
         <p className="font-display font-bold text-brand">Upload new guideline</p>
-        <p className="text-xs text-muted-foreground">Replacing the active guideline immediately deactivates the old one.</p>
+        <p className="text-xs text-muted-foreground">
+          Replacing the active guideline immediately deactivates the old one.
+        </p>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</span>
+          <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Title
+          </span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -109,7 +161,7 @@ function GuidelinesAdmin() {
 
         <button
           onClick={submit}
-          disabled={busy || !file || !title.trim()}
+          disabled={busy || !file || !title.trim() || !selectedHoaId}
           className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-brand-foreground hover:opacity-90 disabled:opacity-50"
         >
           {busy && <Loader2 className="size-4 animate-spin" />}
@@ -123,12 +175,12 @@ function GuidelinesAdmin() {
         </button>
       </div>
 
-      <ArcFormSection />
+      <ArcFormSection hoaId={selectedHoaId} />
     </div>
   );
 }
 
-function ArcFormSection() {
+function ArcFormSection({ hoaId }: { hoaId: string }) {
   const upload = useServerFn(uploadArcForm);
   const get = useServerFn(getActiveArcForm);
   const [active, setActive] = useState<any>(null);
@@ -138,10 +190,15 @@ function ArcFormSection() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const reload = () => get().then(setActive).catch(() => {});
+  const reload = () => {
+    if (!hoaId) return Promise.resolve();
+    return get({ data: { hoaId } })
+      .then(setActive)
+      .catch(() => {});
+  };
   useEffect(() => {
     reload();
-  }, []);
+  }, [hoaId]);
 
   const submit = async () => {
     setErr(null);
@@ -149,13 +206,13 @@ function ArcFormSection() {
     if (!file) return;
     try {
       setStage("uploading");
-      const path = `arc-forms/${crypto.randomUUID()}.pdf`;
+      const path = `arc-forms/${hoaId}/${crypto.randomUUID()}.pdf`;
       const { error } = await supabase.storage
         .from("arc-documents")
         .upload(path, file, { contentType: file.type, upsert: false });
       if (error) throw new Error(error.message);
       setStage("saving");
-      await upload({ data: { title: title.trim(), storagePath: path } });
+      await upload({ data: { hoaId, title: title.trim(), storagePath: path } });
       setInfo("ARC application form activated.");
       setFile(null);
       await reload();
@@ -197,7 +254,9 @@ function ArcFormSection() {
         <p className="font-display font-bold text-brand">Upload new form</p>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</span>
+          <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Title
+          </span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -218,11 +277,15 @@ function ArcFormSection() {
 
         <button
           onClick={submit}
-          disabled={busy || !file || !title.trim()}
+          disabled={busy || !file || !title.trim() || !hoaId}
           className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-sm font-bold text-brand-foreground hover:opacity-90 disabled:opacity-50"
         >
           {busy && <Loader2 className="size-4 animate-spin" />}
-          {stage === "uploading" ? "Uploading…" : stage === "saving" ? "Saving…" : "Upload & activate"}
+          {stage === "uploading"
+            ? "Uploading…"
+            : stage === "saving"
+              ? "Saving…"
+              : "Upload & activate"}
         </button>
       </div>
     </div>
@@ -247,7 +310,10 @@ function Drop({ file, onFile }: { file: File | null; onFile: (f: File | null) =>
           </div>
           <p className="truncate text-sm font-semibold">{file.name}</p>
         </div>
-        <button onClick={() => onFile(null)} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-background">
+        <button
+          onClick={() => onFile(null)}
+          className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-background"
+        >
           <X className="size-4" />
         </button>
       </div>
@@ -270,7 +336,12 @@ function Drop({ file, onFile }: { file: File | null; onFile: (f: File | null) =>
     >
       <UploadCloud className="size-6 text-accent" />
       <p className="text-sm font-semibold text-brand">Drop guideline PDF here</p>
-      <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => handle(e.target.files?.[0] ?? undefined)} />
+      <input
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => handle(e.target.files?.[0] ?? undefined)}
+      />
     </label>
   );
 }

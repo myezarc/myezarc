@@ -61,7 +61,7 @@ function AdminMembershipsPage() {
         HOA Memberships
       </h1>
       <p className="mt-2 text-muted-foreground">
-        Approve or reject homeowner requests to join Park Avenue HOA.
+        Approve or reject homeowner requests across your HOA communities.
       </p>
 
       <div className="mt-6 flex gap-2">
@@ -88,16 +88,20 @@ function AdminMembershipsPage() {
       ) : (
         <ul className="mt-6 space-y-4">
           {filtered.map((row) => (
-            <li
-              key={row.id}
-              className="rounded-2xl border border-border bg-surface p-5"
-            >
+            <li key={row.id} className="rounded-2xl border border-border bg-surface p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-display font-bold text-brand">
                     {row.profile?.full_name || row.email}
                   </p>
-                  <p className="text-sm text-muted-foreground">{row.email} · {row.phone}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {row.email} · {row.phone}
+                  </p>
+                  {row.hoa?.name && (
+                    <p className="mt-1 text-xs font-bold uppercase tracking-wider text-accent">
+                      {row.hoa.name}
+                    </p>
+                  )}
                   <p className="mt-1 text-sm text-brand">
                     {row.street_address}
                     {row.unit ? `, ${row.unit}` : ""}, {row.city}, {row.state} {row.zip}
@@ -161,7 +165,9 @@ function StatusPill({ status }: { status: string }) {
   const m = map[status] ?? map.pending;
   const Icon = m.icon;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${m.cls}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${m.cls}`}
+    >
       <Icon className="size-3.5" /> {m.label}
     </span>
   );

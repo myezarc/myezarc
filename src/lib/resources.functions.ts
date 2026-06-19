@@ -1,31 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-async function ensureMember(supabase: any, userId: string) {
-  const [{ data: roles }, { data: m }] = await Promise.all([
-    supabase.from("user_roles").select("role").eq("user_id", userId),
-    supabase
-      .from("hoa_memberships")
-      .select("status")
-      .eq("user_id", userId)
-      .eq("status", "approved")
-      .maybeSingle(),
-  ]);
-  const isStaff = (roles ?? []).some((r: { role: string }) =>
-    ["admin", "reviewer"].includes(r.role),
-  );
-  if (!isStaff && !m) throw new Error("Approved HOA members only");
-}
+import { ensureAdmin, getHoaOrDefault, getReadableHoa } from "@/lib/hoa-scope";
 
 export const getMemberResources = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureMember(context.supabase, context.userId);
+    const hoa = await getReadableHoa(context.supabase, context.userId);
     const [{ data: g }, { data: f }] = await Promise.all([
       context.supabase
         .from("hoa_guidelines")
         .select("id,title,storage_path,created_at")
+        .eq("hoa_id", hoa.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -33,6 +19,7 @@ export const getMemberResources = createServerFn({ method: "GET" })
       context.supabase
         .from("hoa_forms")
         .select("id,title,storage_path,created_at")
+        .eq("hoa_id", hoa.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -47,6 +34,7 @@ export const getMemberResources = createServerFn({ method: "GET" })
       return data?.signedUrl ?? null;
     };
     return {
+      hoa,
       guideline: g
         ? { id: g.id, title: g.title, created_at: g.created_at, url: await sign(g.storage_path) }
         : null,
@@ -57,46 +45,45 @@ export const getMemberResources = createServerFn({ method: "GET" })
   });
 
 const UploadFormSchema = z.object({
+  hoaId: z.string().uuid().optional().nullable(),
   title: z.string().trim().min(2).max(200),
   storagePath: z.string().min(1).max(1000),
 });
+
+const HoaInputSchema = z
+  .object({ hoaId: z.string().uuid().optional().nullable() })
+  .optional()
+  .default({});
 
 export const uploadArcForm = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => UploadFormSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    if (!(roles ?? []).some((r: { role: string }) => r.role === "admin"))
-      throw new Error("Admins only");
+    await ensureAdmin(supabase, userId);
+    const hoa = await getHoaOrDefault(supabase, data.hoaId);
 
-    await supabase.from("hoa_forms").update({ is_active: false }).eq("is_active", true);
-    const { data: row, error } = await supabase
-      .from("hoa_forms")
-      .insert({
-        title: data.title,
-        storage_path: data.storagePath,
-        is_active: true,
-        uploaded_by: userId,
-      })
-      .select("id")
-      .single();
+    const { data: id, error } = await supabase.rpc("activate_hoa_form", {
+      _hoa_id: hoa.id,
+      _title: data.title,
+      _storage_path: data.storagePath,
+    });
     if (error) throw new Error(error.message);
-    return { id: row.id };
+    return { id };
   });
 
 export const getActiveArcForm = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data } = await context.supabase
+  .inputValidator((input: unknown) => HoaInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const hoa = await getReadableHoa(context.supabase, context.userId, data?.hoaId);
+    const { data: form } = await context.supabase
       .from("hoa_forms")
-      .select("id,title,storage_path,is_active,created_at")
+      .select("id,title,storage_path,is_active,created_at,hoa_id")
+      .eq("hoa_id", hoa.id)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    return data;
+    return form ? { ...form, hoa } : null;
   });

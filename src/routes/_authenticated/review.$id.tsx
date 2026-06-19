@@ -2,7 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
-import { getApplication, runReviewForApplication, finalizeReview } from "@/lib/applications.functions";
+import {
+  getApplication,
+  runReviewForApplication,
+  finalizeReview,
+} from "@/lib/applications.functions";
 import { StatusBadge } from "@/components/status-badge";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,9 +50,12 @@ function ReviewOne() {
   useEffect(() => {
     const path = data?.application?.application_pdf_path;
     if (!path) return;
-    supabase.storage.from("arc-documents").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setPdfUrl(data.signedUrl);
-    });
+    supabase.storage
+      .from("arc-documents")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (data?.signedUrl) setPdfUrl(data.signedUrl);
+      });
   }, [data?.application?.application_pdf_path]);
 
   const runReview = async () => {
@@ -96,7 +103,10 @@ function ReviewOne() {
 
   return (
     <div>
-      <Link to="/review" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand">
+      <Link
+        to="/review"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand"
+      >
         <ArrowLeft className="size-4" /> Back to queue
       </Link>
 
@@ -106,6 +116,11 @@ function ReviewOne() {
           <p className="mt-1 text-sm text-muted-foreground">
             {app.homeowner_email ?? "no email"} · {new Date(app.submitted_at).toLocaleString()}
           </p>
+          {app.hoa?.name && (
+            <p className="mt-1 text-xs font-bold uppercase tracking-wider text-accent">
+              {app.hoa.name}
+            </p>
+          )}
         </div>
         <StatusBadge status={app.status} />
       </div>

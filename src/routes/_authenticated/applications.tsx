@@ -30,9 +30,7 @@ function ApplicationsList() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-brand md:text-4xl">My applications</h1>
-      <p className="mt-2 text-muted-foreground">
-        Every architectural request you've submitted.
-      </p>
+      <p className="mt-2 text-muted-foreground">Every architectural request you've submitted.</p>
 
       <div className="mt-6 flex justify-end">
         <Link
@@ -72,6 +70,11 @@ function ApplicationsList() {
                     <p className="text-xs text-muted-foreground">
                       {new Date(a.created_at).toLocaleString()}
                     </p>
+                    {a.hoa?.name && (
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-accent">
+                        {a.hoa.name}
+                      </p>
+                    )}
                   </div>
                   <StatusBadge status={a.status} />
                 </Link>

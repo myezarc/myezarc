@@ -1,6 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowRight, ClipboardList, FileText, Shield, Sparkles, BookOpen, UserCheck } from "lucide-react";
+import {
+  ArrowRight,
+  ClipboardList,
+  FileText,
+  Shield,
+  Sparkles,
+  BookOpen,
+  UserCheck,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
@@ -14,8 +22,13 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { user, isStaff, isAdmin, roles } = useAuth();
-  const { status: memberStatus } = useMembership();
-  const [stats, setStats] = useState<{ mine: number; queue: number; pendingMembers: number }>({ mine: 0, queue: 0, pendingMembers: 0 });
+  const { status: memberStatus, hoa } = useMembership();
+  const hoaName = hoa?.name ?? "HOA";
+  const [stats, setStats] = useState<{ mine: number; queue: number; pendingMembers: number }>({
+    mine: 0,
+    queue: 0,
+    pendingMembers: 0,
+  });
   const [hasGuideline, setHasGuideline] = useState<boolean | null>(null);
   const [adminCount, setAdminCount] = useState<number | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
@@ -112,15 +125,15 @@ function Dashboard() {
               {memberStatus === "pending"
                 ? "Membership pending"
                 : memberStatus === "rejected"
-                ? "Membership rejected"
-                : "Park Avenue HOA membership required"}
+                  ? "Membership rejected"
+                  : `${hoaName} membership required`}
             </p>
             <p className="text-sm text-amber-800">
               {memberStatus === "pending"
-                ? "An admin is reviewing your request to join Park Avenue HOA."
+                ? `An admin is reviewing your request to join ${hoaName}.`
                 : memberStatus === "rejected"
-                ? "Update your information and resubmit."
-                : "Submit your address and contact info to be approved as a member."}
+                  ? "Update your information and resubmit."
+                  : "Submit your address and contact info to be approved as a member."}
             </p>
           </div>
           <Link
@@ -133,17 +146,36 @@ function Dashboard() {
       )}
 
       <div className="grid gap-5 md:grid-cols-3">
-        <Card to="/apply" icon={FileText} title="Submit a request" desc="Upload your application PDF and we'll route it to your ARC committee." />
-        <Card to="/applications" icon={ClipboardList} title={`My applications (${stats.mine})`} desc="Track status, read decisions, and message the committee." />
+        <Card
+          to="/apply"
+          icon={FileText}
+          title="Submit a request"
+          desc="Upload your application PDF and we'll route it to your ARC committee."
+        />
+        <Card
+          to="/applications"
+          icon={ClipboardList}
+          title={`My applications (${stats.mine})`}
+          desc="Track status, read decisions, and message the committee."
+        />
         {isStaff && (
-          <Card to="/review" icon={Shield} title={`Review queue (${stats.queue})`} desc="Pending applications waiting for AI-assisted review." />
+          <Card
+            to="/review"
+            icon={Shield}
+            title={`Review queue (${stats.queue})`}
+            desc="Pending applications waiting for AI-assisted review."
+          />
         )}
         {isAdmin && (
           <Card
             to="/admin/memberships"
             icon={UserCheck}
             title={`HOA memberships (${stats.pendingMembers})`}
-            desc={stats.pendingMembers ? "Pending member requests waiting for review." : "Approve or reject homeowner membership requests."}
+            desc={
+              stats.pendingMembers
+                ? "Pending member requests waiting for review."
+                : "Approve or reject homeowner membership requests."
+            }
           />
         )}
         {isAdmin && (
@@ -164,7 +196,8 @@ function Dashboard() {
           <div>
             <p className="font-display font-bold text-brand">How it works</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Upload your application PDF → reviewers run an AI check against the active HOA guideline → committee finalizes a decision and messages you back.
+              Upload your application PDF → reviewers run an AI check against the active HOA
+              guideline → committee finalizes a decision and messages you back.
             </p>
           </div>
         </div>
@@ -173,7 +206,17 @@ function Dashboard() {
   );
 }
 
-function Card({ to, icon: Icon, title, desc }: { to: string; icon: any; title: string; desc: string }) {
+function Card({
+  to,
+  icon: Icon,
+  title,
+  desc,
+}: {
+  to: string;
+  icon: any;
+  title: string;
+  desc: string;
+}) {
   return (
     <Link
       to={to}

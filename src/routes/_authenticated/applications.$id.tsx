@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, MessageSquareHeart, Send, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  MessageSquareHeart,
+  Send,
+  X,
+} from "lucide-react";
 import { getApplication, postMessage } from "@/lib/applications.functions";
 import { StatusBadge } from "@/components/status-badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -35,9 +43,12 @@ function ApplicationDetail() {
   useEffect(() => {
     const path = data?.application?.application_pdf_path;
     if (!path) return;
-    supabase.storage.from("arc-documents").createSignedUrl(path, 3600).then(({ data }) => {
-      if (data?.signedUrl) setPdfUrl(data.signedUrl);
-    });
+    supabase.storage
+      .from("arc-documents")
+      .createSignedUrl(path, 3600)
+      .then(({ data }) => {
+        if (data?.signedUrl) setPdfUrl(data.signedUrl);
+      });
   }, [data?.application?.application_pdf_path]);
 
   if (err) return <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{err}</p>;
@@ -65,7 +76,10 @@ function ApplicationDetail() {
 
   return (
     <div>
-      <Link to="/applications" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand">
+      <Link
+        to="/applications"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-brand"
+      >
         <ArrowLeft className="size-4" /> All applications
       </Link>
 
@@ -76,6 +90,11 @@ function ApplicationDetail() {
             Submitted {new Date(app.submitted_at).toLocaleString()}
             {app.homeowner_email ? ` · ${app.homeowner_email}` : ""}
           </p>
+          {app.hoa?.name && (
+            <p className="mt-1 text-xs font-bold uppercase tracking-wider text-accent">
+              {app.hoa.name}
+            </p>
+          )}
         </div>
         <StatusBadge status={app.status} />
       </div>
@@ -84,15 +103,24 @@ function ApplicationDetail() {
         <div className="space-y-6">
           {app.description && (
             <div className="rounded-2xl border border-border bg-background p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Description
+              </p>
               <p className="mt-2 whitespace-pre-line text-sm text-foreground">{app.description}</p>
             </div>
           )}
 
           {pdfUrl && (
             <div className="rounded-2xl border border-border bg-background p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Application PDF</p>
-              <a href={pdfUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-sm font-semibold text-accent hover:underline">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Application PDF
+              </p>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex text-sm font-semibold text-accent hover:underline"
+              >
                 Open PDF in new tab →
               </a>
             </div>
@@ -123,9 +151,7 @@ function ApplicationDetail() {
               <div
                 key={m.id}
                 className={`rounded-xl p-3 text-sm ${
-                  m.is_system
-                    ? "border border-accent/20 bg-accent/5"
-                    : "bg-surface"
+                  m.is_system ? "border border-accent/20 bg-accent/5" : "bg-surface"
                 }`}
               >
                 <p className="whitespace-pre-line">{m.body}</p>
@@ -175,7 +201,9 @@ function ReviewPanel({ review, isFinal }: { review: any; isFinal: boolean }) {
           </p>
           <h3 className="mt-1 font-display text-lg font-bold text-brand">Review</h3>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${p.cls}`}>{p.label}</span>
+        <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${p.cls}`}>
+          {p.label}
+        </span>
       </div>
       <div className="space-y-5 p-5">
         <p className="text-sm leading-relaxed">{review.summary}</p>
@@ -196,7 +224,9 @@ function ReviewPanel({ review, isFinal }: { review: any; isFinal: boolean }) {
           <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
             <div className="flex items-center gap-2">
               <MessageSquareHeart className="size-4 text-accent" />
-              <p className="text-xs font-bold uppercase tracking-wider text-accent">Message to homeowner</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-accent">
+                Message to homeowner
+              </p>
             </div>
             <p className="mt-2 whitespace-pre-line text-sm">{review.homeowner_message}</p>
           </div>

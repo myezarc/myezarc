@@ -3,14 +3,15 @@ import { Clock, XCircle, UserPlus } from "lucide-react";
 import { useMembership } from "@/hooks/use-membership";
 
 export function MembershipGate({ children }: { children: React.ReactNode }) {
-  const { status, loading, isStaff } = useMembership();
+  const { status, loading, isStaff, hoa } = useMembership();
+  const hoaName = hoa?.name ?? "your HOA";
 
   if (loading) return <p className="text-muted-foreground">Loading…</p>;
   if (isStaff || status === "approved") return <>{children}</>;
 
   return (
     <div className="mx-auto max-w-2xl">
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Park Avenue HOA</p>
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">{hoaName}</p>
       <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
         Membership required
       </h1>
@@ -18,7 +19,7 @@ export function MembershipGate({ children }: { children: React.ReactNode }) {
       {status === "none" && (
         <Card
           icon={UserPlus}
-          title="Join Park Avenue HOA"
+          title={`Join ${hoaName}`}
           body="To file ARC applications, please request membership. Submit your address and contact info — an admin will review."
           to="/membership"
           cta="Request membership"
@@ -67,8 +68,8 @@ function Card({
     tone === "amber"
       ? "border-amber-200 bg-amber-50"
       : tone === "red"
-      ? "border-red-200 bg-red-50"
-      : "border-border bg-surface";
+        ? "border-red-200 bg-red-50"
+        : "border-border bg-surface";
   return (
     <div className={`mt-6 rounded-2xl border p-6 ${cls}`}>
       <div className="flex items-start gap-3">

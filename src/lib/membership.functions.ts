@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ensureAdmin, getHoaOrDefault } from "@/lib/hoa-scope";
 
 const MembershipSchema = z.object({
+  hoa_id: z.string().uuid().optional().nullable(),
   street_address: z.string().trim().min(2).max(200),
   unit: z.string().trim().max(50).optional().or(z.literal("")),
   city: z.string().trim().min(1).max(100),
@@ -13,55 +15,47 @@ const MembershipSchema = z.object({
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
-async function getParkAvenueHoaId(supabase: any) {
-  const { data, error } = await supabase
-    .from("hoas")
-    .select("id")
-    .eq("slug", "park-avenue")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Park Avenue HOA not found");
-  return data.id as string;
-}
-
-async function ensureAdmin(supabase: any, userId: string) {
-  const { data: roles } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-  if (!(roles ?? []).some((r: { role: string }) => r.role === "admin"))
-    throw new Error("Admins only");
-}
+const HoaInputSchema = z
+  .object({ hoaId: z.string().uuid().optional().nullable() })
+  .optional()
+  .default({});
 
 export const getMyMembership = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const hoaId = await getParkAvenueHoaId(context.supabase);
-    const { data: hoa } = await context.supabase
-      .from("hoas")
-      .select("id,name,slug,description")
-      .eq("id", hoaId)
-      .maybeSingle();
-    const { data, error } = await context.supabase
+  .inputValidator((input: unknown) => HoaInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const hoa = await getHoaOrDefault(context.supabase, data?.hoaId);
+    const { data: membership, error } = await context.supabase
       .from("hoa_memberships")
       .select("*")
       .eq("user_id", context.userId)
-      .eq("hoa_id", hoaId)
+      .eq("hoa_id", hoa.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return { hoa, membership: data ?? null };
+    return { hoa, membership: membership ?? null };
+  });
+
+export const listHoas = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("hoas")
+      .select("id,name,slug,description")
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
   });
 
 export const submitMembership = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => MembershipSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const hoaId = await getParkAvenueHoaId(context.supabase);
+    const hoa = await getHoaOrDefault(context.supabase, data.hoa_id);
     const { data: existing } = await context.supabase
       .from("hoa_memberships")
       .select("id,status")
       .eq("user_id", context.userId)
-      .eq("hoa_id", hoaId)
+      .eq("hoa_id", hoa.id)
       .maybeSingle();
 
     const payload = {
@@ -78,7 +72,7 @@ export const submitMembership = createServerFn({ method: "POST" })
     if (!existing) {
       const { error } = await context.supabase.from("hoa_memberships").insert({
         user_id: context.userId,
-        hoa_id: hoaId,
+        hoa_id: hoa.id,
         status: "pending",
         ...payload,
       });
@@ -113,7 +107,7 @@ export const listMemberships = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: memberships, error } = await supabaseAdmin
       .from("hoa_memberships")
-      .select("*")
+      .select("*,hoa:hoas(id,name,slug)")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const userIds = Array.from(new Set((memberships ?? []).map((m) => m.user_id)));
@@ -123,9 +117,7 @@ export const listMemberships = createServerFn({ method: "GET" })
           .select("user_id,full_name,email")
           .in("user_id", userIds)
       : { data: [] as any[] };
-    const byUser = new Map(
-      (profiles ?? []).map((p: any) => [p.user_id, p])
-    );
+    const byUser = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
     return (memberships ?? []).map((m) => ({
       ...m,
       profile: byUser.get(m.user_id) ?? null,
@@ -148,15 +140,13 @@ export const decideMembership = createServerFn({ method: "POST" })
       .from("hoa_memberships")
       .update({
         status: data.status,
-        rejection_reason:
-          data.status === "rejected" ? data.rejection_reason || null : null,
+        rejection_reason: data.status === "rejected" ? data.rejection_reason || null : null,
         reviewed_by: context.userId,
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", data.id)
       .select("id");
     if (error) throw new Error(error.message);
-    if (!updated || updated.length === 0)
-      throw new Error("Membership not found or update blocked");
+    if (!updated || updated.length === 0) throw new Error("Membership not found or update blocked");
     return { ok: true };
   });

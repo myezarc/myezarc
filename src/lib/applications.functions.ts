@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runArcReview } from "@/lib/arc-review.functions";
+import { ensureStaff, getSubmissionHoa } from "@/lib/hoa-scope";
 
 const CreateAppSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -16,10 +17,12 @@ export const createApplication = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateAppSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const hoa = await getSubmissionHoa(supabase, userId);
     const { data: row, error } = await supabase
       .from("applications")
       .insert({
         homeowner_id: userId,
+        hoa_id: hoa.id,
         title: data.title,
         description: data.description || null,
         homeowner_email: data.homeownerEmail || null,
@@ -38,7 +41,7 @@ export const listMyApplications = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("applications")
-      .select("id,title,status,created_at,homeowner_email")
+      .select("id,title,status,created_at,homeowner_email,hoa_id,hoa:hoas(name,slug)")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -48,15 +51,10 @@ export const listAllApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const isStaff = (roles ?? []).some((r) => r.role === "admin" || r.role === "reviewer");
-    if (!isStaff) throw new Error("Forbidden");
+    await ensureStaff(supabase, userId);
     const { data, error } = await supabase
       .from("applications")
-      .select("id,title,status,created_at,homeowner_email,homeowner_id")
+      .select("id,title,status,created_at,homeowner_email,homeowner_id,hoa_id,hoa:hoas(name,slug)")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -71,7 +69,7 @@ export const getApplication = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data: app, error } = await supabase
       .from("applications")
-      .select("*")
+      .select("*,hoa:hoas(name,slug)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -97,16 +95,11 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => IdSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const isStaff = (roles ?? []).some((r) => r.role === "admin" || r.role === "reviewer");
-    if (!isStaff) throw new Error("Forbidden");
+    await ensureStaff(supabase, userId);
 
     const { data: app, error: aErr } = await supabase
       .from("applications")
-      .select("id,extracted_text")
+      .select("id,hoa_id,extracted_text")
       .eq("id", data.id)
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
@@ -115,6 +108,7 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
     const { data: guide, error: gErr } = await supabase
       .from("hoa_guidelines")
       .select("extracted_text")
+      .eq("hoa_id", app.hoa_id)
       .eq("is_active", true)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -147,10 +141,7 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw new Error(rErr.message);
 
-    await supabase
-      .from("applications")
-      .update({ status: "in_review" })
-      .eq("id", app.id);
+    await supabase.from("applications").update({ status: "in_review" }).eq("id", app.id);
 
     return review;
   });
@@ -167,42 +158,15 @@ export const finalizeReview = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => FinalizeSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const isStaff = (roles ?? []).some((r) => r.role === "admin" || r.role === "reviewer");
-    if (!isStaff) throw new Error("Forbidden");
+    await ensureStaff(supabase, userId);
 
-    const { error: updErr } = await supabase
-      .from("arc_reviews")
-      .update({
-        decision: data.decision,
-        homeowner_message: data.homeownerMessage,
-        is_final: true,
-        reviewer_id: userId,
-      })
-      .eq("id", data.reviewId);
-    if (updErr) throw new Error(updErr.message);
-
-    const newStatus =
-      data.decision === "approved"
-        ? "approved"
-        : data.decision === "conditional"
-          ? "conditional"
-          : "rejected";
-
-    await supabase
-      .from("applications")
-      .update({ status: newStatus })
-      .eq("id", data.applicationId);
-
-    await supabase.from("messages").insert({
-      application_id: data.applicationId,
-      sender_id: userId,
-      body: data.homeownerMessage,
-      is_system: true,
+    const { error } = await supabase.rpc("finalize_arc_review", {
+      _application_id: data.applicationId,
+      _review_id: data.reviewId,
+      _decision: data.decision,
+      _homeowner_message: data.homeownerMessage,
     });
+    if (error) throw new Error(error.message);
 
     return { ok: true };
   });

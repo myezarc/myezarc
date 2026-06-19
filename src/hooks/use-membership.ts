@@ -9,12 +9,14 @@ export function useMembership() {
   const { user, isStaff, loading: authLoading } = useAuth();
   const fetchMembership = useServerFn(getMyMembership);
   const [status, setStatus] = useState<MembershipStatus | null>(null);
+  const [hoa, setHoa] = useState<{ id: string; name: string; slug: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user || isStaff) {
       setStatus(isStaff ? "approved" : null);
+      setHoa(null);
       setLoading(false);
       return;
     }
@@ -23,6 +25,7 @@ export function useMembership() {
       try {
         const res = await fetchMembership();
         if (cancelled) return;
+        setHoa(res.hoa ?? null);
         setStatus(res.membership ? (res.membership.status as MembershipStatus) : "none");
       } catch {
         if (!cancelled) setStatus("none");
@@ -35,5 +38,5 @@ export function useMembership() {
     };
   }, [user, isStaff, authLoading, fetchMembership]);
 
-  return { status, loading, isStaff };
+  return { status, loading, isStaff, hoa };
 }
