@@ -173,6 +173,18 @@ function AuthPage() {
               {mode === "signin" ? "Create one" : "Sign in"}
             </button>
           </p>
+
+          {mode === "signup" && (
+            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">
+              By creating an account, you agree to the{" "}
+              <Link to="/terms" className="font-semibold text-accent hover:underline">
+                Terms & Disclaimer
+              </Link>
+              . Ez-ARC is an informational tool and is not responsible for approval
+              outcomes, compliance issues, losses, delays, disputes, or other issues
+              arising from use of the service.
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +26,11 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminMembershipsRouteImport } from './routes/_authenticated/admin.memberships'
 import { Route as AuthenticatedAdminGuidelinesRouteImport } from './routes/_authenticated/admin.guidelines'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -108,6 +114,7 @@ const AuthenticatedAdminGuidelinesRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/terms': typeof TermsRoute
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/terms': typeof TermsRoute
   '/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/applications': typeof AuthenticatedApplicationsRouteWithChildren
   '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/terms'
     | '/applications'
     | '/apply'
     | '/dashboard'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/terms'
     | '/applications'
     | '/apply'
     | '/dashboard'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/terms'
     | '/_authenticated/applications'
     | '/_authenticated/apply'
     | '/_authenticated/dashboard'
@@ -211,10 +223,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -381,6 +401,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

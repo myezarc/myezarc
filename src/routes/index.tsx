@@ -333,9 +333,9 @@ function Footer() {
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row">
         <Logo />
         <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-brand">Privacy Policy</Link>
-          <Link to="/" className="hover:text-brand">Terms of Service</Link>
-          <Link to="/" className="hover:text-brand">Security</Link>
+          <Link to="/terms" className="hover:text-brand">Terms & Disclaimer</Link>
+          <Link to="/terms" className="hover:text-brand">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-brand">Security</Link>
         </div>
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} Ez-ARC Review.
