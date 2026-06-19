@@ -149,6 +149,17 @@ function AuthPage() {
             {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{err}</p>}
             {info && <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{info}</p>}
 
+            <p className="pt-1 text-center text-xs leading-5 text-muted-foreground">
+              By {mode === "signin" ? "signing in" : "creating an account"}, you agree to
+              the{" "}
+              <Link to="/terms" className="font-semibold text-accent hover:underline">
+                Terms & Disclaimer
+              </Link>
+              . Ez-ARC is an informational tool and is not responsible for approval
+              outcomes, compliance issues, losses, delays, disputes, or other issues
+              arising from use of the service.
+            </p>
+
             <button
               type="submit"
               disabled={busy}
@@ -173,18 +184,6 @@ function AuthPage() {
               {mode === "signin" ? "Create one" : "Sign in"}
             </button>
           </p>
-
-          {mode === "signup" && (
-            <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">
-              By creating an account, you agree to the{" "}
-              <Link to="/terms" className="font-semibold text-accent hover:underline">
-                Terms & Disclaimer
-              </Link>
-              . Ez-ARC is an informational tool and is not responsible for approval
-              outcomes, compliance issues, losses, delays, disputes, or other issues
-              arising from use of the service.
-            </p>
-          )}
         </div>
       </div>
     </div>
