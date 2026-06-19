@@ -11,7 +11,8 @@ export type HoaRole = {
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [hoaRoles, setHoaRoles] = useState<HoaRole[]>([]);
 
@@ -24,7 +25,7 @@ export function useAuth() {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      setLoading(false);
+      setSessionLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();
@@ -34,21 +35,27 @@ export function useAuth() {
     if (!user) {
       setRoles([]);
       setHoaRoles([]);
+      setRolesLoading(false);
       return;
     }
     let cancelled = false;
+    setRolesLoading(true);
     (async () => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      const { data: scopedRoles } = await supabase
-        .from("hoa_roles")
-        .select("hoa_id,role")
-        .eq("user_id", user.id);
-      if (!cancelled) {
-        setRoles((data ?? []).map((r) => r.role as AppRole));
-        setHoaRoles((scopedRoles ?? []) as HoaRole[]);
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        const { data: scopedRoles } = await supabase
+          .from("hoa_roles")
+          .select("hoa_id,role")
+          .eq("user_id", user.id);
+        if (!cancelled) {
+          setRoles((data ?? []).map((r) => r.role as AppRole));
+          setHoaRoles((scopedRoles ?? []) as HoaRole[]);
+        }
+      } finally {
+        if (!cancelled) setRolesLoading(false);
       }
     })();
     return () => {
@@ -62,6 +69,7 @@ export function useAuth() {
     roles.includes("reviewer") || hoaRoles.some((role) => role.role === "arc_reviewer");
   const isStaff = isGlobalAdmin || isHoaAdmin || isArcReviewer;
   const isAdmin = isGlobalAdmin || isHoaAdmin;
+  const loading = sessionLoading || (!!user && rolesLoading);
 
   return {
     session,
