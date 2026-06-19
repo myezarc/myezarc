@@ -38,6 +38,13 @@ function Dashboard() {
   const claim = useServerFn(claimFirstAdmin);
   const fetchAdminCount = useServerFn(getAdminCount);
   const [claiming, setClaiming] = useState(false);
+  const roleLabel = isGlobalAdmin
+    ? "Global Admin"
+    : isAdmin
+      ? "HOA Admin"
+      : isStaff
+        ? "ARC Reviewer"
+        : "Home Owner";
 
   useEffect(() => {
     if (
@@ -105,14 +112,33 @@ function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Welcome</p>
-        <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
-          Hi{fullName ? `, ${fullName}` : ""} 👋
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Roles: {roles.length ? roles.join(", ") : "homeowner"}
-        </p>
+      <div className="mb-8 rounded-2xl border border-border bg-surface p-5 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+              {isGlobalAdmin ? "Platform overview" : "Welcome"}
+            </p>
+            <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
+              {isGlobalAdmin ? "Global Admin Dashboard" : `Hi${fullName ? `, ${fullName}` : ""}`}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground md:text-base">
+              {isGlobalAdmin
+                ? "Manage HOA accounts, memberships, guidelines, users, and review activity from one umbrella view."
+                : "Start a request, check your applications, or continue the ARC review workflow."}
+            </p>
+          </div>
+          <div className="shrink-0 rounded-xl border border-border bg-background px-3 py-2 text-right">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Current view
+            </p>
+            <p className="mt-0.5 text-sm font-bold text-brand">{roleLabel}</p>
+            {roles.length > 1 && (
+              <p className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground">
+                {roles.join(", ")}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {adminCount === 0 && (
