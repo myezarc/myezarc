@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listMyApplications } from "@/lib/applications.functions";
 import { StatusBadge } from "@/components/status-badge";
-import { FileText } from "lucide-react";
+import { AlertTriangle, FileText } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 import { MembershipGate } from "@/components/membership-gate";
 
@@ -17,15 +18,32 @@ export const Route = createFileRoute("/_authenticated/applications")({
 });
 
 function ApplicationsList() {
+  const { isGlobalAdmin } = useAuth();
   const list = useServerFn(listMyApplications);
   const [items, setItems] = useState<any[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isGlobalAdmin) return;
     list()
       .then(setItems)
       .catch((e: any) => setErr(e?.message ?? "Failed to load."));
-  }, []);
+  }, [isGlobalAdmin, list]);
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <div className="mb-3 grid size-10 place-items-center rounded-xl bg-accent/10 text-accent">
+          <AlertTriangle className="size-5" />
+        </div>
+        <h1 className="font-display text-2xl font-bold text-brand">Global Admin umbrella account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Global Admins see platform-level HOA activity and do not have a homeowner application
+          list.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Clock, PlusCircle, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, PlusCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   getMyMembership,
@@ -19,7 +19,7 @@ type Membership = Awaited<ReturnType<typeof getMyMembership>>["membership"];
 type Hoa = Awaited<ReturnType<typeof getMyMembership>>["hoa"];
 
 function MembershipPage() {
-  const { user } = useAuth();
+  const { user, isGlobalAdmin } = useAuth();
   const router = useRouter();
   const fetchMembership = useServerFn(getMyMembership);
   const fetchHoas = useServerFn(listHoas);
@@ -90,6 +90,10 @@ function MembershipPage() {
 
   useEffect(() => {
     (async () => {
+      if (isGlobalAdmin) {
+        setLoading(false);
+        return;
+      }
       const allHoas = await fetchHoas();
       setHoas(allHoas);
       const firstHoa = allHoas[0];
@@ -99,7 +103,7 @@ function MembershipPage() {
       }
       setLoading(false);
     })();
-  }, [fetchHoas, user?.email]);
+  }, [fetchHoas, isGlobalAdmin, user?.email]);
 
   useEffect(() => {
     if (!selectedHoaId || loading) return;
@@ -152,6 +156,21 @@ function MembershipPage() {
 
   if (loading) {
     return <p className="text-muted-foreground">Loading…</p>;
+  }
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <div className="mb-3 grid size-10 place-items-center rounded-xl bg-accent/10 text-accent">
+          <AlertTriangle className="size-5" />
+        </div>
+        <h1 className="font-display text-2xl font-bold text-brand">Global Admin umbrella account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Global Admins approve and manage HOA accounts at the platform level, so they do not need
+          HOA membership.
+        </p>
+      </div>
+    );
   }
 
   const showForm = !membership || membership.status === "rejected" || editing;

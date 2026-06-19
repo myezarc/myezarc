@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/apply")({
 });
 
 function ApplyPage() {
-  const { user } = useAuth();
+  const { user, isGlobalAdmin } = useAuth();
   const navigate = useNavigate();
   const ocr = useServerFn(ocrImages);
   const submit = useServerFn(createApplication);
@@ -33,6 +33,21 @@ function ApplyPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const busy = stage !== "idle";
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <div className="mb-3 grid size-10 place-items-center rounded-xl bg-accent/10 text-accent">
+          <AlertTriangle className="size-5" />
+        </div>
+        <h1 className="font-display text-2xl font-bold text-brand">Global Admin umbrella account</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Global Admins oversee HOA accounts and review operations across the platform. They do not
+          submit homeowner ARC applications.
+        </p>
+      </div>
+    );
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

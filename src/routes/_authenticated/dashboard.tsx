@@ -8,6 +8,7 @@ import {
   Sparkles,
   BookOpen,
   UserCheck,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
-  const { user, isStaff, isAdmin, roles } = useAuth();
+  const { user, isStaff, isAdmin, isGlobalAdmin, roles } = useAuth();
   const navigate = useNavigate();
   const { status: memberStatus, hoa, loading: membershipLoading } = useMembership();
   const hoaName = hoa?.name ?? "HOA";
@@ -131,7 +132,7 @@ function Dashboard() {
         </div>
       )}
 
-      {!isStaff && memberStatus && memberStatus !== "approved" && (
+      {!isGlobalAdmin && !isStaff && memberStatus && memberStatus !== "approved" && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div>
             <p className="font-display font-bold text-amber-900">
@@ -159,18 +160,22 @@ function Dashboard() {
       )}
 
       <div className="grid gap-5 md:grid-cols-3">
-        <Card
-          to="/apply"
-          icon={FileText}
-          title="Submit a request"
-          desc="Upload your application PDF and we'll route it to your ARC committee."
-        />
-        <Card
-          to="/applications"
-          icon={ClipboardList}
-          title={`My applications (${stats.mine})`}
-          desc="Track status, read decisions, and message the committee."
-        />
+        {!isGlobalAdmin && (
+          <Card
+            to="/apply"
+            icon={FileText}
+            title="Submit a request"
+            desc="Upload your application PDF and we'll route it to your ARC committee."
+          />
+        )}
+        {!isGlobalAdmin && (
+          <Card
+            to="/applications"
+            icon={ClipboardList}
+            title={`My applications (${stats.mine})`}
+            desc="Track status, read decisions, and message the committee."
+          />
+        )}
         {isStaff && (
           <Card
             to="/review"
@@ -199,6 +204,14 @@ function Dashboard() {
             desc={hasGuideline ? "Active guideline uploaded." : "Upload your HOA guideline PDF."}
           />
         )}
+        {isGlobalAdmin && (
+          <Card
+            to="/admin/users"
+            icon={Users}
+            title="Users"
+            desc="Manage platform users and review roles across all HOA accounts."
+          />
+        )}
       </div>
 
       <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
@@ -209,8 +222,9 @@ function Dashboard() {
           <div>
             <p className="font-display font-bold text-brand">How it works</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Upload your application PDF → reviewers run an AI check against the active HOA
-              guideline → committee finalizes a decision and messages you back.
+              {isGlobalAdmin
+                ? "This umbrella account oversees HOA setup, memberships, guidelines, reviewers, and review queues across the platform."
+                : "Upload your application PDF → reviewers run an AI check against the active HOA guideline → committee finalizes a decision and messages you back."}
             </p>
           </div>
         </div>

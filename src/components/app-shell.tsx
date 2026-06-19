@@ -16,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   } = useAuth();
   const router = useRouter();
   const navigate = useNavigate();
+  const showHomeownerTools = !isGlobalAdmin;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -35,9 +36,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             <NavLink to="/dashboard" icon={Home} label="Dashboard" />
-            <NavLink to="/apply" icon={FileText} label="New application" />
-            <NavLink to="/applications" icon={ClipboardList} label="My applications" />
-            {!isStaff && <NavLink to="/membership" icon={UserCheck} label="Membership" />}
+            {showHomeownerTools && <NavLink to="/apply" icon={FileText} label="New application" />}
+            {showHomeownerTools && (
+              <NavLink to="/applications" icon={ClipboardList} label="My applications" />
+            )}
+            {showHomeownerTools && !isStaff && (
+              <NavLink to="/membership" icon={UserCheck} label="Membership" />
+            )}
             <NavLink to="/resources" icon={FolderDown} label="Resources" />
             {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Review queue" />}
             {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
@@ -60,9 +65,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-6 pb-3 md:hidden">
           <NavLink to="/dashboard" icon={Home} label="Home" />
-          <NavLink to="/apply" icon={FileText} label="New" />
-          <NavLink to="/applications" icon={ClipboardList} label="Mine" />
-          {!isStaff && <NavLink to="/membership" icon={UserCheck} label="HOA" />}
+          {showHomeownerTools && <NavLink to="/apply" icon={FileText} label="New" />}
+          {showHomeownerTools && <NavLink to="/applications" icon={ClipboardList} label="Mine" />}
+          {showHomeownerTools && !isStaff && (
+            <NavLink to="/membership" icon={UserCheck} label="HOA" />
+          )}
           <NavLink to="/resources" icon={FolderDown} label="Files" />
           {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Queue" />}
           {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
