@@ -52,8 +52,8 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        setInfo("Check your email to confirm your account, then sign in.");
-        setMode("signin");
+        setInfo("Account created. Taking you to your HOA setup…");
+        navigate({ to: "/membership" });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
