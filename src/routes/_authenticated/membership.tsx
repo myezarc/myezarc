@@ -1,9 +1,14 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, PlusCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { getMyMembership, listHoas, submitMembership } from "@/lib/membership.functions";
+import {
+  getMyMembership,
+  listHoas,
+  submitHoaRequest,
+  submitMembership,
+} from "@/lib/membership.functions";
 
 export const Route = createFileRoute("/_authenticated/membership")({
   head: () => ({ meta: [{ title: "HOA Membership — Ez-ARC" }] }),
@@ -19,14 +24,17 @@ function MembershipPage() {
   const fetchMembership = useServerFn(getMyMembership);
   const fetchHoas = useServerFn(listHoas);
   const submit = useServerFn(submitMembership);
+  const requestHoa = useServerFn(submitHoaRequest);
 
   const [loading, setLoading] = useState(true);
   const [hoas, setHoas] = useState<Hoa[]>([]);
   const [selectedHoaId, setSelectedHoaId] = useState<string>("");
+  const [mode, setMode] = useState<"existing" | "new">("existing");
   const [hoa, setHoa] = useState<Hoa>(null);
   const [membership, setMembership] = useState<Membership>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
@@ -35,6 +43,17 @@ function MembershipPage() {
     city: "",
     state: "",
     zip: "",
+    phone: "",
+    email: user?.email ?? "",
+    note: "",
+  });
+  const [newHoaForm, setNewHoaForm] = useState({
+    requested_hoa_name: "",
+    community_address: "",
+    city: "",
+    state: "",
+    zip: "",
+    contact_name: "",
     phone: "",
     email: user?.email ?? "",
     note: "",
@@ -104,6 +123,33 @@ function MembershipPage() {
     }
   };
 
+  const onRequestHoa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setSubmitting(true);
+    try {
+      await requestHoa({ data: newHoaForm });
+      setSuccess("Your HOA request was sent to the admin for review.");
+      setNewHoaForm({
+        requested_hoa_name: "",
+        community_address: "",
+        city: "",
+        state: "",
+        zip: "",
+        contact_name: "",
+        phone: "",
+        email: user?.email ?? "",
+        note: "",
+      });
+      router.invalidate();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to submit HOA request");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <p className="text-muted-foreground">Loading…</p>;
   }
@@ -118,14 +164,52 @@ function MembershipPage() {
       </h1>
       {hoa?.description && <p className="mt-2 text-muted-foreground">{hoa.description}</p>}
 
-      {hoas.length > 1 && (
-        <label className="mt-6 block">
-          <span className="mb-1 block text-sm font-semibold text-brand">Community</span>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => {
+            setMode("existing");
+            setError(null);
+            setSuccess(null);
+          }}
+          className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold ${
+            mode === "existing"
+              ? "border-accent bg-accent/10 text-brand"
+              : "border-border bg-surface text-muted-foreground"
+          }`}
+        >
+          My HOA is listed
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("new");
+            setError(null);
+            setSuccess(null);
+          }}
+          className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold ${
+            mode === "new"
+              ? "border-accent bg-accent/10 text-brand"
+              : "border-border bg-surface text-muted-foreground"
+          }`}
+        >
+          Request a new HOA
+        </button>
+      </div>
+
+      {mode === "existing" && (
+        <label className="mt-4 block">
+          <span className="mb-1 block text-sm font-semibold text-brand">
+            Choose your HOA community
+          </span>
           <select
             value={selectedHoaId}
             onChange={(e) => setSelectedHoaId(e.target.value)}
             className={inputCls}
           >
+            <option value="" disabled>
+              Select an existing HOA
+            </option>
             {hoas.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
@@ -135,7 +219,7 @@ function MembershipPage() {
         </label>
       )}
 
-      {membership && !editing && (
+      {mode === "existing" && membership && !editing && (
         <div className="mt-6">
           <StatusBanner
             status={membership.status}
@@ -169,7 +253,7 @@ function MembershipPage() {
         </div>
       )}
 
-      {showForm && (
+      {mode === "existing" && showForm && (
         <form
           onSubmit={onSubmit}
           className="mt-6 space-y-4 rounded-2xl border border-border bg-surface p-6"
@@ -180,6 +264,10 @@ function MembershipPage() {
           <p className="text-sm text-muted-foreground">
             Submit your address and contact info. An admin will review and approve before you can
             file ARC applications.
+          </p>
+          <p className="rounded-xl border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
+            Email, phone, SMS, and WhatsApp-style messages may be used when needed for account,
+            membership, application, and HOA notifications.
           </p>
 
           <Field label="Street address" required>
@@ -260,6 +348,123 @@ function MembershipPage() {
             className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-accent-foreground hover:opacity-90 disabled:opacity-50"
           >
             {submitting ? "Submitting…" : "Submit for approval"}
+          </button>
+        </form>
+      )}
+
+      {mode === "new" && (
+        <form
+          onSubmit={onRequestHoa}
+          className="mt-6 space-y-4 rounded-2xl border border-border bg-surface p-6"
+        >
+          <div className="flex items-start gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+              <PlusCircle className="size-5" />
+            </div>
+            <div>
+              <p className="font-display font-bold text-brand">Request a new HOA</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                If your community is not listed, send the HOA details to the admin. You can
+                request membership after the HOA is added.
+              </p>
+            </div>
+          </div>
+
+          <Field label="HOA / community name" required>
+            <input
+              required
+              value={newHoaForm.requested_hoa_name}
+              onChange={(e) =>
+                setNewHoaForm({ ...newHoaForm, requested_hoa_name: e.target.value })
+              }
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Community address (optional)">
+            <input
+              value={newHoaForm.community_address}
+              onChange={(e) =>
+                setNewHoaForm({ ...newHoaForm, community_address: e.target.value })
+              }
+              className={inputCls}
+            />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="City" required>
+              <input
+                required
+                value={newHoaForm.city}
+                onChange={(e) => setNewHoaForm({ ...newHoaForm, city: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="State" required>
+              <input
+                required
+                value={newHoaForm.state}
+                onChange={(e) => setNewHoaForm({ ...newHoaForm, state: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Zip" required>
+              <input
+                required
+                value={newHoaForm.zip}
+                onChange={(e) => setNewHoaForm({ ...newHoaForm, zip: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="HOA contact name (optional)">
+            <input
+              value={newHoaForm.contact_name}
+              onChange={(e) => setNewHoaForm({ ...newHoaForm, contact_name: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Your phone" required>
+              <input
+                required
+                type="tel"
+                value={newHoaForm.phone}
+                onChange={(e) => setNewHoaForm({ ...newHoaForm, phone: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Your email" required>
+              <input
+                required
+                type="email"
+                value={newHoaForm.email}
+                onChange={(e) => setNewHoaForm({ ...newHoaForm, email: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="Note (optional)">
+            <textarea
+              rows={3}
+              value={newHoaForm.note}
+              onChange={(e) => setNewHoaForm({ ...newHoaForm, note: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+
+          <p className="rounded-xl border border-border bg-background p-3 text-xs leading-5 text-muted-foreground">
+            By submitting, you agree that the admin may use your email and phone for follow-up,
+            including email, SMS, or WhatsApp-style notifications when needed.
+          </p>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {success && <p className="text-sm text-green-700">{success}</p>}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-accent-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {submitting ? "Sending…" : "Send HOA request"}
           </button>
         </form>
       )}

@@ -15,6 +15,18 @@ const MembershipSchema = z.object({
   note: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
+const HoaRequestSchema = z.object({
+  requested_hoa_name: z.string().trim().min(2).max(200),
+  community_address: z.string().trim().max(200).optional().or(z.literal("")),
+  city: z.string().trim().min(1).max(100),
+  state: z.string().trim().min(2).max(50),
+  zip: z.string().trim().min(3).max(20),
+  contact_name: z.string().trim().max(120).optional().or(z.literal("")),
+  phone: z.string().trim().min(5).max(30),
+  email: z.string().trim().email().max(255),
+  note: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
 const HoaInputSchema = z
   .object({ hoaId: z.string().uuid().optional().nullable() })
   .optional()
@@ -100,6 +112,39 @@ export const submitMembership = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const submitHoaRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => HoaRequestSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: existing, error: existingError } = await context.supabase
+      .from("hoa_requests")
+      .select("id")
+      .eq("user_id", context.userId)
+      .eq("status", "pending")
+      .ilike("requested_hoa_name", data.requested_hoa_name)
+      .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
+    if (existing) {
+      throw new Error("You already have a pending request for this HOA.");
+    }
+
+    const { error } = await context.supabase.from("hoa_requests").insert({
+      user_id: context.userId,
+      requested_hoa_name: data.requested_hoa_name,
+      community_address: data.community_address || null,
+      city: data.city,
+      state: data.state,
+      zip: data.zip,
+      contact_name: data.contact_name || null,
+      phone: data.phone,
+      email: data.email,
+      note: data.note || null,
+      status: "pending",
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const listMemberships = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -122,6 +167,19 @@ export const listMemberships = createServerFn({ method: "GET" })
       ...m,
       profile: byUser.get(m.user_id) ?? null,
     }));
+  });
+
+export const listHoaRequests = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: requests, error } = await supabaseAdmin
+      .from("hoa_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return requests ?? [];
   });
 
 const DecideSchema = z.object({

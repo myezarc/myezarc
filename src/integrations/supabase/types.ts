@@ -314,6 +314,66 @@ export type Database = {
           },
         ]
       }
+      hoa_requests: {
+        Row: {
+          admin_note: string | null
+          city: string
+          community_address: string | null
+          contact_name: string | null
+          created_at: string
+          email: string
+          id: string
+          note: string | null
+          phone: string
+          requested_hoa_name: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          state: string
+          status: string
+          updated_at: string
+          user_id: string
+          zip: string
+        }
+        Insert: {
+          admin_note?: string | null
+          city: string
+          community_address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          note?: string | null
+          phone: string
+          requested_hoa_name: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          zip: string
+        }
+        Update: {
+          admin_note?: string | null
+          city?: string
+          community_address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          note?: string | null
+          phone?: string
+          requested_hoa_name?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          zip?: string
+        }
+        Relationships: []
+      }
       hoas: {
         Row: {
           created_at: string

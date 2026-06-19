@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -22,7 +22,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { user, isStaff, isAdmin, roles } = useAuth();
-  const { status: memberStatus, hoa } = useMembership();
+  const navigate = useNavigate();
+  const { status: memberStatus, hoa, loading: membershipLoading } = useMembership();
   const hoaName = hoa?.name ?? "HOA";
   const [stats, setStats] = useState<{ mine: number; queue: number; pendingMembers: number }>({
     mine: 0,
@@ -35,6 +36,18 @@ function Dashboard() {
   const claim = useServerFn(claimFirstAdmin);
   const fetchAdminCount = useServerFn(getAdminCount);
   const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    if (
+      !membershipLoading &&
+      adminCount !== null &&
+      adminCount !== 0 &&
+      !isStaff &&
+      memberStatus === "none"
+    ) {
+      navigate({ to: "/membership" });
+    }
+  }, [membershipLoading, adminCount, isStaff, memberStatus, navigate]);
 
   useEffect(() => {
     if (!user) return;

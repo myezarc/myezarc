@@ -96,6 +96,20 @@ function TermsPage() {
               terms and accept responsibility for your own use of the platform.
             </p>
           </section>
+
+          <section>
+            <h2 className="mb-2 font-display text-xl font-bold text-brand">
+              Notifications
+            </h2>
+            <p>
+              You agree that Ez-ARC, HOA administrators, managers, or committee members may
+              use the email address, phone number, and other contact details you provide to
+              send account, membership, application, review, deadline, and HOA-related
+              notifications. These communications may include email, phone calls, SMS/text
+              messages, and WhatsApp-style messages when needed. Message and data rates may
+              apply.
+            </p>
+          </section>
         </div>
       </main>
     </div>

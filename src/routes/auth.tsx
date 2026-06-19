@@ -157,7 +157,8 @@ function AuthPage() {
               </Link>
               . Ez-ARC is an informational tool and is not responsible for approval
               outcomes, compliance issues, losses, delays, disputes, or other issues
-              arising from use of the service.
+              arising from use of the service. Email, phone, SMS, or WhatsApp-style
+              notifications may be sent when needed.
             </p>
 
             <button

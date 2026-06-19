@@ -2,7 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
-import { listMemberships, decideMembership } from "@/lib/membership.functions";
+import {
+  decideMembership,
+  listHoaRequests,
+  listMemberships,
+} from "@/lib/membership.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/memberships")({
   head: () => ({ meta: [{ title: "HOA Memberships — Ez-ARC" }] }),
@@ -10,11 +14,14 @@ export const Route = createFileRoute("/_authenticated/admin/memberships")({
 });
 
 type Row = Awaited<ReturnType<typeof listMemberships>>[number];
+type HoaRequest = Awaited<ReturnType<typeof listHoaRequests>>[number];
 
 function AdminMembershipsPage() {
   const list = useServerFn(listMemberships);
+  const listRequests = useServerFn(listHoaRequests);
   const decide = useServerFn(decideMembership);
   const [rows, setRows] = useState<Row[]>([]);
+  const [hoaRequests, setHoaRequests] = useState<HoaRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -23,8 +30,9 @@ function AdminMembershipsPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const data = await list();
+      const [data, requests] = await Promise.all([list(), listRequests()]);
       setRows(data);
+      setHoaRequests(requests);
     } catch (e: any) {
       setError(e?.message ?? "Failed");
     } finally {
@@ -63,6 +71,42 @@ function AdminMembershipsPage() {
       <p className="mt-2 text-muted-foreground">
         Approve or reject homeowner requests across your HOA communities.
       </p>
+
+      {hoaRequests.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
+          <p className="font-display font-bold text-brand">New HOA requests</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Homeowners submitted these because their HOA was not listed.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {hoaRequests.map((request) => (
+              <li
+                key={request.id}
+                className="rounded-xl border border-border bg-background p-4 text-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-brand">{request.requested_hoa_name}</p>
+                    <p className="text-muted-foreground">
+                      {[request.community_address, request.city, request.state, request.zip]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      {request.contact_name ? `${request.contact_name} · ` : ""}
+                      {request.email} · {request.phone}
+                    </p>
+                    {request.note && (
+                      <p className="mt-2 text-muted-foreground">Note: {request.note}</p>
+                    )}
+                  </div>
+                  <StatusPill status={request.status} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-6 flex gap-2">
         {(["pending", "approved", "rejected", "all"] as const).map((f) => (
