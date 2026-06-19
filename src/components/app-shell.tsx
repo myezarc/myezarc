@@ -1,10 +1,19 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { LogOut, Home, FileText, ClipboardList, Shield, Users, BookOpen, UserCheck, FolderDown, Github } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { type RoleViewMode, useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, isStaff, isAdmin, isGlobalAdmin, isArcReviewer } = useAuth();
+  const {
+    user,
+    isStaff,
+    isAdmin,
+    isGlobalAdmin,
+    isArcReviewer,
+    canSwitchRoleView,
+    roleViewMode,
+    setRoleViewMode,
+  } = useAuth();
   const router = useRouter();
   const navigate = useNavigate();
 
@@ -37,6 +46,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/github-setup" icon={Github} label="GitHub" />
           </nav>
           <div className="flex items-center gap-3">
+            {canSwitchRoleView && (
+              <RoleViewSelect value={roleViewMode} onChange={setRoleViewMode} />
+            )}
             <span className="hidden text-sm text-muted-foreground md:inline">{user?.email}</span>
             <button
               onClick={signOut}
@@ -61,6 +73,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-12">{children}</main>
     </div>
+  );
+}
+
+function RoleViewSelect({
+  value,
+  onChange,
+}: {
+  value: RoleViewMode;
+  onChange: (value: RoleViewMode) => void;
+}) {
+  return (
+    <label className="hidden items-center gap-2 text-xs font-semibold text-muted-foreground lg:inline-flex">
+      Act as
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as RoleViewMode)}
+        className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold text-brand outline-none focus:border-accent"
+      >
+        <option value="global_admin">Global Admin</option>
+        <option value="hoa_admin">HOA Admin</option>
+        <option value="arc_reviewer">Reviewer</option>
+        <option value="homeowner">Home Owner</option>
+      </select>
+    </label>
   );
 }
 

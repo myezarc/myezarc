@@ -7,6 +7,10 @@ export type HoaRole = {
   hoa_id: string;
   role: "hoa_admin" | "arc_reviewer";
 };
+export type RoleViewMode = "global_admin" | "hoa_admin" | "arc_reviewer" | "homeowner";
+
+const ROLE_VIEW_EMAIL = "mfuyar+globaladminarc@gmail.com";
+const ROLE_VIEW_STORAGE_KEY = "ezarc_role_view_mode";
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -15,6 +19,7 @@ export function useAuth() {
   const [rolesLoading, setRolesLoading] = useState(false);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [hoaRoles, setHoaRoles] = useState<HoaRole[]>([]);
+  const [roleViewMode, setRoleViewModeState] = useState<RoleViewMode>("global_admin");
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -63,13 +68,41 @@ export function useAuth() {
     };
   }, [user]);
 
-  const isGlobalAdmin = roles.includes("global_admin") || roles.includes("admin");
-  const isHoaAdmin = hoaRoles.some((role) => role.role === "hoa_admin");
-  const isArcReviewer =
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(ROLE_VIEW_STORAGE_KEY);
+    if (
+      saved === "global_admin" ||
+      saved === "hoa_admin" ||
+      saved === "arc_reviewer" ||
+      saved === "homeowner"
+    ) {
+      setRoleViewModeState(saved);
+    }
+  }, []);
+
+  const rawIsGlobalAdmin = roles.includes("global_admin") || roles.includes("admin");
+  const rawIsHoaAdmin = hoaRoles.some((role) => role.role === "hoa_admin");
+  const rawIsArcReviewer =
     roles.includes("reviewer") || hoaRoles.some((role) => role.role === "arc_reviewer");
+  const canSwitchRoleView =
+    rawIsGlobalAdmin && user?.email?.toLowerCase() === ROLE_VIEW_EMAIL;
+
+  const isGlobalAdmin = canSwitchRoleView ? roleViewMode === "global_admin" : rawIsGlobalAdmin;
+  const isHoaAdmin = canSwitchRoleView ? roleViewMode === "hoa_admin" : rawIsHoaAdmin;
+  const isArcReviewer = canSwitchRoleView
+    ? roleViewMode === "arc_reviewer"
+    : rawIsArcReviewer;
   const isStaff = isGlobalAdmin || isHoaAdmin || isArcReviewer;
   const isAdmin = isGlobalAdmin || isHoaAdmin;
   const loading = sessionLoading || (!!user && rolesLoading);
+
+  const setRoleViewMode = (mode: RoleViewMode) => {
+    setRoleViewModeState(mode);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ROLE_VIEW_STORAGE_KEY, mode);
+    }
+  };
 
   return {
     session,
@@ -82,5 +115,8 @@ export function useAuth() {
     isGlobalAdmin,
     isHoaAdmin,
     isArcReviewer,
+    roleViewMode,
+    setRoleViewMode,
+    canSwitchRoleView,
   };
 }
