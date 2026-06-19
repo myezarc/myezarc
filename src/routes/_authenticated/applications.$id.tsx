@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/applications/$id")({
 
 function ApplicationDetail() {
   const { id } = Route.useParams();
-  const { isStaff } = useAuth();
+  const { isStaff, isGlobalAdmin } = useAuth();
   const get = useServerFn(getApplication);
   const send = useServerFn(postMessage);
   const [data, setData] = useState<any>(null);
@@ -37,8 +37,9 @@ function ApplicationDetail() {
       .catch((e: any) => setErr(e?.message ?? "Failed to load."));
 
   useEffect(() => {
+    if (isGlobalAdmin) return;
     reload();
-  }, [id]);
+  }, [id, isGlobalAdmin]);
 
   useEffect(() => {
     const path = data?.application?.application_pdf_path;
@@ -73,6 +74,18 @@ function ApplicationDetail() {
       setPosting(false);
     }
   };
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <h1 className="font-display text-2xl font-bold text-brand">Platform oversight only</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Global Admins do not open ARC application details. Use HOA accounts and Users for
+          high-level HOA membership, board, and reviewer information.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>

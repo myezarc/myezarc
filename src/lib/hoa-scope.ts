@@ -57,28 +57,19 @@ export async function ensureStaff(supabase: AppSupabaseClient, userId: string) {
   return roles;
 }
 
-export async function canManageHoa(
-  supabase: AppSupabaseClient,
-  userId: string,
-  hoaId: string,
-) {
+export async function canManageHoa(supabase: AppSupabaseClient, userId: string, hoaId: string) {
   const roles = await getUserRoles(supabase, userId);
   if (isGlobalAdminRole(roles)) return true;
   const hoaRoles = await getUserHoaRoles(supabase, userId);
   return hoaRoles.some((role) => role.hoa_id === hoaId && role.role === "hoa_admin");
 }
 
-export async function canReviewHoa(
-  supabase: AppSupabaseClient,
-  userId: string,
-  hoaId: string,
-) {
-  if (await canManageHoa(supabase, userId, hoaId)) return true;
+export async function canReviewHoa(supabase: AppSupabaseClient, userId: string, hoaId: string) {
   const roles = await getUserRoles(supabase, userId);
   if (roles.includes("reviewer")) return true;
   const hoaRoles = await getUserHoaRoles(supabase, userId);
   return hoaRoles.some(
-    (role) => role.hoa_id === hoaId && role.role === "arc_reviewer",
+    (role) => role.hoa_id === hoaId && (role.role === "hoa_admin" || role.role === "arc_reviewer"),
   );
 }
 
@@ -152,14 +143,12 @@ export async function listManageableHoas(supabase: AppSupabaseClient, userId: st
   }
 
   const hoaRoles = await getUserHoaRoles(supabase, userId);
-  return hoaRoles
-    .filter((role) => role.role === "hoa_admin" && role.hoa)
-    .map((role) => role.hoa!);
+  return hoaRoles.filter((role) => role.role === "hoa_admin" && role.hoa).map((role) => role.hoa!);
 }
 
 export async function listReviewableHoas(supabase: AppSupabaseClient, userId: string) {
   const roles = await getUserRoles(supabase, userId);
-  if (isGlobalAdminRole(roles) || roles.includes("reviewer")) {
+  if (roles.includes("reviewer")) {
     const { data, error } = await supabase
       .from("hoas")
       .select("id,name,slug,description")
@@ -189,7 +178,8 @@ export async function getReadableHoa(
   hoaId?: string | null,
 ) {
   const roles = await getUserRoles(supabase, userId);
-  if (hoaId && (await canReviewHoa(supabase, userId, hoaId))) return getHoaOrDefault(supabase, hoaId);
+  if (hoaId && (await canReviewHoa(supabase, userId, hoaId)))
+    return getHoaOrDefault(supabase, hoaId);
 
   const memberships = await getApprovedMemberships(supabase, userId);
   if (hoaId) {

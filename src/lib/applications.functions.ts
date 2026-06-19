@@ -2,7 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runArcReview } from "@/lib/arc-review.functions";
-import { ensureCanReviewHoa, getSubmissionHoa, listReviewableHoas } from "@/lib/hoa-scope";
+import {
+  ensureCanReviewHoa,
+  getSubmissionHoa,
+  getUserRoles,
+  listReviewableHoas,
+} from "@/lib/hoa-scope";
 
 const CreateAppSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -42,6 +47,7 @@ export const listMyApplications = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("applications")
       .select("id,title,status,created_at,homeowner_email,hoa_id,hoa:hoas(name,slug)")
+      .eq("homeowner_id", context.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -71,7 +77,7 @@ export const getApplication = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: app, error } = await supabase
       .from("applications")
       .select("*,hoa:hoas(name,slug)")
@@ -79,6 +85,9 @@ export const getApplication = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!app) throw new Error("Not found");
+    if (app.homeowner_id !== userId) {
+      await ensureCanReviewHoa(supabase, userId, app.hoa_id);
+    }
 
     const { data: reviews } = await supabase
       .from("arc_reviews")
@@ -192,6 +201,20 @@ export const postMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => MessageSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { data: app, error: appError } = await context.supabase
+      .from("applications")
+      .select("homeowner_id,hoa_id")
+      .eq("id", data.applicationId)
+      .maybeSingle();
+    if (appError) throw new Error(appError.message);
+    if (!app) throw new Error("Application not found");
+    if (app.homeowner_id !== context.userId) {
+      await ensureCanReviewHoa(context.supabase, context.userId, app.hoa_id);
+    }
+    const roles = await getUserRoles(context.supabase, context.userId);
+    if (roles.includes("global_admin") && app.homeowner_id !== context.userId) {
+      throw new Error("Global Admin cannot access ARC application messages.");
+    }
     const { error } = await context.supabase.from("messages").insert({
       application_id: data.applicationId,
       sender_id: context.userId,

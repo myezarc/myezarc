@@ -131,6 +131,84 @@ export const setUserSuspended = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const listHoaPeopleOverview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await ensureGlobalAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: hoas, error: hoaError } = await supabaseAdmin
+      .from("hoas")
+      .select("id,name,slug,description")
+      .order("name", { ascending: true });
+    if (hoaError) throw new Error(hoaError.message);
+
+    const hoaIds = (hoas ?? []).map((hoa) => hoa.id);
+    const { data: memberships, error: membershipError } = hoaIds.length
+      ? await supabaseAdmin
+          .from("hoa_memberships")
+          .select("id,user_id,hoa_id,status,email")
+          .in("hoa_id", hoaIds)
+      : { data: [] as any[], error: null };
+    if (membershipError) throw new Error(membershipError.message);
+
+    const { data: hoaRoles, error: roleError } = hoaIds.length
+      ? await supabaseAdmin.from("hoa_roles").select("user_id,hoa_id,role").in("hoa_id", hoaIds)
+      : { data: [] as any[], error: null };
+    if (roleError) throw new Error(roleError.message);
+
+    const userIds = Array.from(
+      new Set([
+        ...(memberships ?? []).map((membership: any) => membership.user_id),
+        ...(hoaRoles ?? []).map((role: any) => role.user_id),
+      ]),
+    );
+    const { data: profiles } = userIds.length
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("user_id,full_name,email")
+          .in("user_id", userIds)
+      : { data: [] as any[] };
+    const profileByUser = new Map(
+      (profiles ?? []).map((profile: any) => [profile.user_id, profile]),
+    );
+
+    const person = (userId: string, fallbackEmail?: string | null) => {
+      const profile = profileByUser.get(userId);
+      return {
+        user_id: userId,
+        name: profile?.full_name ?? profile?.email ?? fallbackEmail ?? userId,
+        email: profile?.email ?? fallbackEmail ?? null,
+      };
+    };
+
+    return (hoas ?? []).map((hoa) => {
+      const hoaMemberships = (memberships ?? []).filter(
+        (membership: any) => membership.hoa_id === hoa.id,
+      );
+      const approvedMembers = hoaMemberships.filter(
+        (membership: any) => membership.status === "approved",
+      );
+      const pendingMembers = hoaMemberships.filter(
+        (membership: any) => membership.status === "pending",
+      );
+      const roles = (hoaRoles ?? []).filter((role: any) => role.hoa_id === hoa.id);
+      return {
+        ...hoa,
+        member_count: approvedMembers.length,
+        pending_member_count: pendingMembers.length,
+        board_members: roles
+          .filter((role: any) => role.role === "hoa_admin")
+          .map((role: any) => person(role.user_id)),
+        reviewers: roles
+          .filter((role: any) => role.role === "arc_reviewer")
+          .map((role: any) => person(role.user_id)),
+        members: approvedMembers.map((membership: any) =>
+          person(membership.user_id, membership.email),
+        ),
+      };
+    });
+  });
+
 const RoleSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(["homeowner", "reviewer", "admin", "global_admin"]),

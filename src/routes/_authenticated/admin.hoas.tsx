@@ -3,22 +3,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Building2, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { decideHoaRequest, listHoaRequests, listHoas } from "@/lib/membership.functions";
+import { listHoaPeopleOverview } from "@/lib/admin.functions";
+import { decideHoaRequest, listHoaRequests } from "@/lib/membership.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/hoas")({
   head: () => ({ meta: [{ title: "HOAs — Ez-ARC" }] }),
   component: HoasAdminPage,
 });
 
-type Hoa = Awaited<ReturnType<typeof listHoas>>[number];
 type HoaRequest = Awaited<ReturnType<typeof listHoaRequests>>[number];
+type HoaOverview = Awaited<ReturnType<typeof listHoaPeopleOverview>>[number];
 
 function HoasAdminPage() {
   const { isGlobalAdmin } = useAuth();
-  const fetchHoas = useServerFn(listHoas);
   const fetchRequests = useServerFn(listHoaRequests);
+  const fetchOverview = useServerFn(listHoaPeopleOverview);
   const decideRequest = useServerFn(decideHoaRequest);
-  const [hoas, setHoas] = useState<Hoa[]>([]);
+  const [overview, setOverview] = useState<HoaOverview[]>([]);
   const [requests, setRequests] = useState<HoaRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +37,9 @@ function HoasAdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [hoaRows, requestRows] = await Promise.all([fetchHoas(), fetchRequests()]);
-      setHoas(hoaRows);
+      const [requestRows, overviewRows] = await Promise.all([fetchRequests(), fetchOverview()]);
       setRequests(requestRows);
+      setOverview(overviewRows);
     } catch (e: any) {
       setError(e?.message ?? "Failed to load HOA data.");
     } finally {
@@ -127,26 +128,44 @@ function HoasAdminPage() {
 
           <section className="mt-6 rounded-2xl border border-border bg-background">
             <div className="border-b border-border p-5">
-              <p className="font-display font-bold text-brand">Existing HOAs</p>
+              <p className="font-display font-bold text-brand">HOA people overview</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {hoas.length} HOA account{hoas.length === 1 ? "" : "s"} currently listed.
+                High-level membership, board, and reviewer information only.
               </p>
             </div>
-            {hoas.length === 0 ? (
+            {overview.length === 0 ? (
               <p className="p-5 text-sm text-muted-foreground">No HOA accounts yet.</p>
             ) : (
               <ul className="divide-y divide-border">
-                {hoas.map((hoa) => (
-                  <li key={hoa.id} className="flex items-start gap-3 p-5">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
-                      <Building2 className="size-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-brand">{hoa.name}</p>
-                      <p className="text-xs text-muted-foreground">{hoa.slug}</p>
-                      {hoa.description && (
-                        <p className="mt-1 text-sm text-muted-foreground">{hoa.description}</p>
-                      )}
+                {overview.map((hoa) => (
+                  <li key={hoa.id} className="p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+                        <Building2 className="size-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-brand">{hoa.name}</p>
+                            <p className="text-xs text-muted-foreground">{hoa.slug}</p>
+                            {hoa.description && (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {hoa.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <CountPill label="Members" value={hoa.member_count} />
+                            <CountPill label="Pending" value={hoa.pending_member_count} />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                          <PeopleList title="Board / HOA Admin" people={hoa.board_members} />
+                          <PeopleList title="ARC Reviewers" people={hoa.reviewers} />
+                          <PeopleList title="Members" people={hoa.members} limit={8} />
+                        </div>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -256,5 +275,46 @@ function StatusPill({ status }: { status: string }) {
       <Icon className="size-3" />
       {config.label}
     </span>
+  );
+}
+
+function CountPill({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-bold text-brand">
+      {label}: {value}
+    </span>
+  );
+}
+
+function PeopleList({
+  title,
+  people,
+  limit = 5,
+}: {
+  title: string;
+  people: Array<{ user_id: string; name: string; email: string | null }>;
+  limit?: number;
+}) {
+  const visible = people.slice(0, limit);
+  const extra = people.length - visible.length;
+  return (
+    <div className="rounded-xl border border-border bg-surface p-3">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</p>
+      {visible.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">None assigned.</p>
+      ) : (
+        <ul className="mt-2 space-y-2">
+          {visible.map((person) => (
+            <li key={person.user_id} className="min-w-0 text-sm">
+              <p className="truncate font-semibold text-brand">{person.name}</p>
+              {person.email && (
+                <p className="truncate text-xs text-muted-foreground">{person.email}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {extra > 0 && <p className="mt-2 text-xs text-muted-foreground">+{extra} more</p>}
+    </div>
   );
 }

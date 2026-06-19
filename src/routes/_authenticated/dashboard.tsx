@@ -203,7 +203,7 @@ function Dashboard() {
             desc="Track status, read decisions, and message the committee."
           />
         )}
-        {isStaff && (
+        {!isGlobalAdmin && isStaff && (
           <Card
             to="/review"
             icon={Shield}
@@ -219,7 +219,7 @@ function Dashboard() {
             desc="Review new HOA requests and manage HOA accounts across the platform."
           />
         )}
-        {isAdmin && (
+        {!isGlobalAdmin && isAdmin && (
           <Card
             to="/admin/memberships"
             icon={UserCheck}
@@ -231,7 +231,7 @@ function Dashboard() {
             }
           />
         )}
-        {isAdmin && (
+        {!isGlobalAdmin && isAdmin && (
           <Card
             to="/admin/guidelines"
             icon={BookOpen}

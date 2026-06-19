@@ -9,6 +9,7 @@ import {
 } from "@/lib/applications.functions";
 import { StatusBadge } from "@/components/status-badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/review/$id")({
   head: () => ({ meta: [{ title: "Review application — Ez-ARC" }] }),
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/review/$id")({
 
 function ReviewOne() {
   const { id } = Route.useParams();
+  const { isGlobalAdmin } = useAuth();
   const navigate = useNavigate();
   const get = useServerFn(getApplication);
   const runFn = useServerFn(runReviewForApplication);
@@ -44,8 +46,9 @@ function ReviewOne() {
       .catch((e: any) => setErr(e?.message ?? "Failed."));
 
   useEffect(() => {
+    if (isGlobalAdmin) return;
     reload();
-  }, [id]);
+  }, [id, isGlobalAdmin]);
 
   useEffect(() => {
     const path = data?.application?.application_pdf_path;
@@ -92,6 +95,18 @@ function ReviewOne() {
       setSubmitting(false);
     }
   };
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <h1 className="font-display text-2xl font-bold text-brand">Platform oversight only</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Global Admins do not access ARC application details. Use HOA accounts and Users for
+          high-level HOA membership, board, and reviewer information.
+        </p>
+      </div>
+    );
+  }
 
   if (err && !data) return <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{err}</p>;
   if (!data) return <p className="text-sm text-muted-foreground">Loading…</p>;

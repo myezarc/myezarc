@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listAllApplications } from "@/lib/applications.functions";
 import { StatusBadge } from "@/components/status-badge";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/review")({
   head: () => ({ meta: [{ title: "Review queue — Ez-ARC" }] }),
@@ -10,16 +11,30 @@ export const Route = createFileRoute("/_authenticated/review")({
 });
 
 function ReviewQueue() {
+  const { isGlobalAdmin } = useAuth();
   const list = useServerFn(listAllApplications);
   const [items, setItems] = useState<any[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<"open" | "all">("open");
 
   useEffect(() => {
+    if (isGlobalAdmin) return;
     list()
       .then(setItems)
       .catch((e: any) => setErr(e?.message ?? "Failed to load."));
-  }, []);
+  }, [isGlobalAdmin, list]);
+
+  if (isGlobalAdmin) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <h1 className="font-display text-2xl font-bold text-brand">Platform oversight only</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Global Admins can view HOA structure and user roles, but not ARC application queues or
+          application details.
+        </p>
+      </div>
+    );
+  }
 
   const visible =
     items === null

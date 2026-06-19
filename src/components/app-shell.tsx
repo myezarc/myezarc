@@ -29,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const navigate = useNavigate();
   const showHomeownerTools = !isGlobalAdmin;
+  const showHoaStaffTools = !isGlobalAdmin;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -71,12 +72,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/membership" icon={UserCheck} label="Membership" />
           )}
           <NavLink to="/resources" icon={FolderDown} label="Resources" />
-          {(isArcReviewer || isAdmin) && (
+          {showHoaStaffTools && (isArcReviewer || isAdmin) && (
             <NavLink to="/review" icon={Shield} label="Review queue" />
           )}
           {isGlobalAdmin && <NavLink to="/admin/hoas" icon={Building2} label="HOAs" />}
-          {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
-          {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />}
+          {showHoaStaffTools && isAdmin && (
+            <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />
+          )}
+          {showHoaStaffTools && isAdmin && (
+            <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />
+          )}
           {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
           <NavLink to="/github-setup" icon={Github} label="GitHub" />
         </nav>
@@ -88,10 +93,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/membership" icon={UserCheck} label="HOA" />
           )}
           <NavLink to="/resources" icon={FolderDown} label="Files" />
-          {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Queue" />}
+          {showHoaStaffTools && (isArcReviewer || isAdmin) && (
+            <NavLink to="/review" icon={Shield} label="Queue" />
+          )}
           {isGlobalAdmin && <NavLink to="/admin/hoas" icon={Building2} label="HOAs" />}
-          {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
-          {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />}
+          {showHoaStaffTools && isAdmin && (
+            <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />
+          )}
+          {showHoaStaffTools && isAdmin && (
+            <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />
+          )}
           {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
           <NavLink to="/github-setup" icon={Github} label="GitHub" />
         </div>
