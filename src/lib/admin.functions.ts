@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ensureAdmin } from "@/lib/hoa-scope";
+import { ensureCanManageHoa, ensureGlobalAdmin } from "@/lib/hoa-scope";
 
 export const listUsersWithRoles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureGlobalAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profiles, error } = await supabaseAdmin
       .from("profiles")
@@ -14,6 +14,9 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id,role");
+    const { data: hoaRoles } = await supabaseAdmin
+      .from("hoa_roles")
+      .select("user_id,hoa_id,role,hoa:hoas(id,name)");
     const byUser = new Map<string, string[]>();
     (roles ?? []).forEach((r) => {
       const arr = byUser.get(r.user_id) ?? [];
@@ -36,6 +39,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       return {
         ...p,
         roles: byUser.get(p.user_id) ?? [],
+        hoa_roles: (hoaRoles ?? []).filter((role) => role.user_id === p.user_id),
         membership_id: m?.id ?? null,
         membership_status: m?.status ?? null,
         phone: m?.phone ?? null,
@@ -54,7 +58,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
 
 const RoleSchema = z.object({
   userId: z.string().uuid(),
-  role: z.enum(["homeowner", "reviewer", "admin"]),
+  role: z.enum(["homeowner", "reviewer", "admin", "global_admin"]),
   action: z.enum(["add", "remove"]),
 });
 
@@ -62,7 +66,7 @@ export const setUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => RoleSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureGlobalAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     if (data.action === "add") {
       const { error } = await supabaseAdmin
@@ -74,6 +78,55 @@ export const setUserRole = createServerFn({ method: "POST" })
         .from("user_roles")
         .delete()
         .eq("user_id", data.userId)
+        .eq("role", data.role);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+const HoaRoleSchema = z.object({
+  userId: z.string().uuid(),
+  hoaId: z.string().uuid(),
+  role: z.enum(["hoa_admin", "arc_reviewer"]),
+  action: z.enum(["add", "remove"]),
+});
+
+export const setHoaRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => HoaRoleSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureCanManageHoa(context.supabase, context.userId, data.hoaId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.role === "hoa_admin") {
+      await ensureGlobalAdmin(context.supabase, context.userId);
+    }
+    if (data.action === "add") {
+      if (data.role === "arc_reviewer") {
+        const { data: membership, error: membershipError } = await supabaseAdmin
+          .from("hoa_memberships")
+          .select("id")
+          .eq("user_id", data.userId)
+          .eq("hoa_id", data.hoaId)
+          .eq("status", "approved")
+          .maybeSingle();
+        if (membershipError) throw new Error(membershipError.message);
+        if (!membership) {
+          throw new Error("ARC reviewers must first be approved HOA members.");
+        }
+      }
+      const { error } = await supabaseAdmin.from("hoa_roles").insert({
+        user_id: data.userId,
+        hoa_id: data.hoaId,
+        role: data.role,
+        assigned_by: context.userId,
+      });
+      if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin
+        .from("hoa_roles")
+        .delete()
+        .eq("user_id", data.userId)
+        .eq("hoa_id", data.hoaId)
         .eq("role", data.role);
       if (error) throw new Error(error.message);
     }
@@ -95,7 +148,7 @@ export const getAdminCount = createServerFn({ method: "GET" })
     const { count, error } = await supabaseAdmin
       .from("user_roles")
       .select("*", { count: "exact", head: true })
-      .eq("role", "admin");
+      .in("role", ["admin", "global_admin"]);
     if (error) throw new Error(error.message);
     return count ?? 0;
   });

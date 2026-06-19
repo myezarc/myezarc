@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runArcReview } from "@/lib/arc-review.functions";
-import { ensureStaff, getSubmissionHoa } from "@/lib/hoa-scope";
+import { ensureCanReviewHoa, getSubmissionHoa, listReviewableHoas } from "@/lib/hoa-scope";
 
 const CreateAppSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -51,10 +51,15 @@ export const listAllApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    await ensureStaff(supabase, userId);
+    const reviewableHoas = await listReviewableHoas(supabase, userId);
+    if (reviewableHoas.length === 0) throw new Error("ARC reviewer access required");
     const { data, error } = await supabase
       .from("applications")
       .select("id,title,status,created_at,homeowner_email,homeowner_id,hoa_id,hoa:hoas(name,slug)")
+      .in(
+        "hoa_id",
+        reviewableHoas.map((hoa) => hoa.id),
+      )
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -95,7 +100,6 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => IdSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureStaff(supabase, userId);
 
     const { data: app, error: aErr } = await supabase
       .from("applications")
@@ -104,6 +108,7 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
     if (!app?.extracted_text) throw new Error("Application has no extracted text.");
+    await ensureCanReviewHoa(supabase, userId, app.hoa_id);
 
     const { data: guide, error: gErr } = await supabase
       .from("hoa_guidelines")
@@ -158,7 +163,14 @@ export const finalizeReview = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => FinalizeSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureStaff(supabase, userId);
+    const { data: app, error: appError } = await supabase
+      .from("applications")
+      .select("hoa_id")
+      .eq("id", data.applicationId)
+      .maybeSingle();
+    if (appError) throw new Error(appError.message);
+    if (!app) throw new Error("Application not found");
+    await ensureCanReviewHoa(supabase, userId, app.hoa_id);
 
     const { error } = await supabase.rpc("finalize_arc_review", {
       _application_id: data.applicationId,

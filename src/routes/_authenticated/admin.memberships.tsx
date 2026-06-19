@@ -2,11 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { setHoaRole } from "@/lib/admin.functions";
 import {
+  decideHoaRequest,
   decideMembership,
   listHoaRequests,
   listMemberships,
 } from "@/lib/membership.functions";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/admin/memberships")({
   head: () => ({ meta: [{ title: "HOA Memberships — Ez-ARC" }] }),
@@ -20,6 +23,9 @@ function AdminMembershipsPage() {
   const list = useServerFn(listMemberships);
   const listRequests = useServerFn(listHoaRequests);
   const decide = useServerFn(decideMembership);
+  const decideRequest = useServerFn(decideHoaRequest);
+  const setRole = useServerFn(setHoaRole);
+  const { isGlobalAdmin } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [hoaRequests, setHoaRequests] = useState<HoaRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,13 +36,50 @@ function AdminMembershipsPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const [data, requests] = await Promise.all([list(), listRequests()]);
+      const [data, requests] = await Promise.all([
+        list(),
+        isGlobalAdmin ? listRequests() : Promise.resolve([]),
+      ]);
       setRows(data);
       setHoaRequests(requests);
     } catch (e: any) {
       setError(e?.message ?? "Failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleReviewer = async (row: Row) => {
+    const hasReviewer = row.hoa_roles?.some((role: any) => role.role === "arc_reviewer");
+    setBusy(`r:${row.id}`);
+    try {
+      await setRole({
+        data: {
+          userId: row.user_id,
+          hoaId: row.hoa_id,
+          role: "arc_reviewer",
+          action: hasReviewer ? "remove" : "add",
+        },
+      });
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message ?? "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onDecideHoaRequest = async (request: HoaRequest, status: "reviewed" | "rejected") => {
+    const note =
+      status === "rejected" ? window.prompt("Rejection note (optional)") ?? undefined : undefined;
+    setBusy(`h:${request.id}`);
+    try {
+      await decideRequest({ data: { id: request.id, status, admin_note: note } });
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message ?? "Failed");
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -102,6 +145,24 @@ function AdminMembershipsPage() {
                   </div>
                   <StatusPill status={request.status} />
                 </div>
+                {request.status === "pending" && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      disabled={busy === `h:${request.id}`}
+                      onClick={() => onDecideHoaRequest(request, "reviewed")}
+                      className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      Approve HOA
+                    </button>
+                    <button
+                      disabled={busy === `h:${request.id}`}
+                      onClick={() => onDecideHoaRequest(request, "rejected")}
+                      className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -182,7 +243,16 @@ function AdminMembershipsPage() {
                 </div>
               )}
               {row.status === "approved" && (
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    disabled={busy === `r:${row.id}`}
+                    onClick={() => toggleReviewer(row)}
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-bold text-brand hover:bg-surface disabled:opacity-50"
+                  >
+                    {row.hoa_roles?.some((role: any) => role.role === "arc_reviewer")
+                      ? "Remove ARC reviewer"
+                      : "Make ARC reviewer"}
+                  </button>
                   <button
                     disabled={busy === row.id}
                     onClick={() => onDecide(row, "rejected")}
@@ -204,6 +274,7 @@ function StatusPill({ status }: { status: string }) {
   const map: Record<string, { cls: string; icon: any; label: string }> = {
     pending: { cls: "bg-amber-100 text-amber-900", icon: Clock, label: "Pending" },
     approved: { cls: "bg-green-100 text-green-900", icon: CheckCircle2, label: "Approved" },
+    reviewed: { cls: "bg-green-100 text-green-900", icon: CheckCircle2, label: "Reviewed" },
     rejected: { cls: "bg-red-100 text-red-900", icon: XCircle, label: "Rejected" },
   };
   const m = map[status] ?? map.pending;

@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, isStaff, isAdmin } = useAuth();
+  const { user, isStaff, isAdmin, isGlobalAdmin, isArcReviewer } = useAuth();
   const router = useRouter();
   const navigate = useNavigate();
 
@@ -30,10 +30,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/applications" icon={ClipboardList} label="My applications" />
             {!isStaff && <NavLink to="/membership" icon={UserCheck} label="Membership" />}
             <NavLink to="/resources" icon={FolderDown} label="Resources" />
-            {isStaff && <NavLink to="/review" icon={Shield} label="Review queue" />}
+            {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Review queue" />}
             {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Memberships" />}
             {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />}
-            {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+            {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
             <NavLink to="/github-setup" icon={Github} label="GitHub" />
           </nav>
           <div className="flex items-center gap-3">
@@ -52,10 +52,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavLink to="/applications" icon={ClipboardList} label="Mine" />
           {!isStaff && <NavLink to="/membership" icon={UserCheck} label="HOA" />}
           <NavLink to="/resources" icon={FolderDown} label="Files" />
-          {isStaff && <NavLink to="/review" icon={Shield} label="Queue" />}
+          {(isArcReviewer || isAdmin) && <NavLink to="/review" icon={Shield} label="Queue" />}
           {isAdmin && <NavLink to="/admin/memberships" icon={UserCheck} label="Members" />}
           {isAdmin && <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />}
-            {isAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
+            {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
             <NavLink to="/github-setup" icon={Github} label="GitHub" />
           </div>
       </header>

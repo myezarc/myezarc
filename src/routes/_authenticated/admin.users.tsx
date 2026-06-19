@@ -5,7 +5,7 @@ import { listUsersWithRoles, setUserRole } from "@/lib/admin.functions";
 import { decideMembership } from "@/lib/membership.functions";
 import { Loader2 } from "lucide-react";
 
-const ROLES = ["homeowner", "reviewer", "admin"] as const;
+const ROLES = ["homeowner", "reviewer", "admin", "global_admin"] as const;
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   head: () => ({ meta: [{ title: "Users — Ez-ARC" }] }),
@@ -57,7 +57,10 @@ function UsersAdmin() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-brand md:text-4xl">Users & roles</h1>
-      <p className="mt-2 text-muted-foreground">Grant reviewer or admin access. Every user keeps the homeowner role.</p>
+      <p className="mt-2 text-muted-foreground">
+        Global Admins manage platform roles and new HOA requests. HOA Admin and ARC Reviewer
+        roles are assigned from the Memberships screen.
+      </p>
 
       {err && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{err}</p>}
 

@@ -374,6 +374,41 @@ export type Database = {
         }
         Relationships: []
       }
+      hoa_roles: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          hoa_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          hoa_id: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          hoa_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hoa_roles_hoa_id_fkey"
+            columns: ["hoa_id"]
+            isOneToOne: false
+            referencedRelation: "hoas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hoas: {
         Row: {
           created_at: string
@@ -509,6 +544,14 @@ export type Database = {
         Args: { _hoa_id: string; _user_id: string }
         Returns: boolean
       }
+      can_manage_hoa: {
+        Args: { _hoa_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_review_hoa: {
+        Args: { _hoa_id: string; _user_id: string }
+        Returns: boolean
+      }
       claim_first_admin: { Args: never; Returns: undefined }
       finalize_arc_review: {
         Args: {
@@ -523,6 +566,7 @@ export type Database = {
         Args: { _hoa_id: string; _user_id: string }
         Returns: boolean
       }
+      has_global_admin: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -534,7 +578,7 @@ export type Database = {
       is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "homeowner" | "reviewer" | "admin"
+      app_role: "homeowner" | "reviewer" | "admin" | "global_admin"
       application_status:
         | "submitted"
         | "in_review"
@@ -671,7 +715,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["homeowner", "reviewer", "admin"],
+      app_role: ["homeowner", "reviewer", "admin", "global_admin"],
       application_status: [
         "submitted",
         "in_review",

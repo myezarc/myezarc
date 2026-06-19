@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ensureAdmin, getHoaOrDefault } from "@/lib/hoa-scope";
+import {
+  ensureCanManageHoa,
+  ensureGlobalAdmin,
+  getHoaOrDefault,
+  listManageableHoas,
+} from "@/lib/hoa-scope";
 
 const MembershipSchema = z.object({
   hoa_id: z.string().uuid().optional().nullable(),
@@ -148,13 +153,21 @@ export const submitHoaRequest = createServerFn({ method: "POST" })
 export const listMemberships = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    const manageableHoas = await listManageableHoas(context.supabase, context.userId);
+    if (manageableHoas.length === 0) throw new Error("HOA admin access required");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: memberships, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("hoa_memberships")
       .select("*,hoa:hoas(id,name,slug)")
       .order("created_at", { ascending: false });
+    const hoaIds = manageableHoas.map((hoa) => hoa.id);
+    if (hoaIds.length > 0) query = query.in("hoa_id", hoaIds);
+    const { data: memberships, error } = await query;
     if (error) throw new Error(error.message);
+    const { data: hoaRoles } = await supabaseAdmin
+      .from("hoa_roles")
+      .select("user_id,hoa_id,role")
+      .in("hoa_id", hoaIds.length ? hoaIds : ["00000000-0000-0000-0000-000000000000"]);
     const userIds = Array.from(new Set((memberships ?? []).map((m) => m.user_id)));
     const { data: profiles } = userIds.length
       ? await supabaseAdmin
@@ -166,13 +179,16 @@ export const listMemberships = createServerFn({ method: "GET" })
     return (memberships ?? []).map((m) => ({
       ...m,
       profile: byUser.get(m.user_id) ?? null,
+      hoa_roles: (hoaRoles ?? []).filter(
+        (role) => role.user_id === m.user_id && role.hoa_id === m.hoa_id,
+      ),
     }));
   });
 
 export const listHoaRequests = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureGlobalAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: requests, error } = await supabaseAdmin
       .from("hoa_requests")
@@ -180,6 +196,77 @@ export const listHoaRequests = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return requests ?? [];
+  });
+
+const DecideHoaRequestSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(["reviewed", "rejected"]),
+  admin_note: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+function slugify(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return slug || `hoa-${Date.now()}`;
+}
+
+export const decideHoaRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DecideHoaRequestSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureGlobalAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: request, error: requestError } = await supabaseAdmin
+      .from("hoa_requests")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (requestError) throw new Error(requestError.message);
+    if (!request) throw new Error("HOA request not found");
+
+    if (data.status === "reviewed") {
+      const baseSlug = slugify(request.requested_hoa_name);
+      let slug = baseSlug;
+      for (let i = 2; i < 100; i += 1) {
+        const { data: existing } = await supabaseAdmin
+          .from("hoas")
+          .select("id")
+          .eq("slug", slug)
+          .maybeSingle();
+        if (!existing) break;
+        slug = `${baseSlug}-${i}`;
+      }
+
+      const description = [
+        request.community_address,
+        request.city,
+        request.state,
+        request.zip,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const { error: hoaError } = await supabaseAdmin.from("hoas").insert({
+        name: request.requested_hoa_name,
+        slug,
+        description: description || null,
+      });
+      if (hoaError) throw new Error(hoaError.message);
+    }
+
+    const { error } = await supabaseAdmin
+      .from("hoa_requests")
+      .update({
+        status: data.status,
+        admin_note: data.admin_note || null,
+        reviewed_by: context.userId,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const DecideSchema = z.object({
@@ -192,8 +279,15 @@ export const decideMembership = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DecideSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: membership, error: membershipError } = await supabaseAdmin
+      .from("hoa_memberships")
+      .select("hoa_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (membershipError) throw new Error(membershipError.message);
+    if (!membership) throw new Error("Membership not found");
+    await ensureCanManageHoa(context.supabase, context.userId, membership.hoa_id);
     const { data: updated, error } = await supabaseAdmin
       .from("hoa_memberships")
       .update({

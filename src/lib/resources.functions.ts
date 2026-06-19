@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ensureAdmin, getHoaOrDefault, getReadableHoa } from "@/lib/hoa-scope";
+import { ensureCanManageHoa, getHoaOrDefault, getReadableHoa } from "@/lib/hoa-scope";
 
 export const getMemberResources = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -60,8 +60,8 @@ export const uploadArcForm = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => UploadFormSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    await ensureAdmin(supabase, userId);
     const hoa = await getHoaOrDefault(supabase, data.hoaId);
+    await ensureCanManageHoa(supabase, userId, hoa.id);
 
     const { data: id, error } = await supabase.rpc("activate_hoa_form", {
       _hoa_id: hoa.id,

@@ -1,9 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-export type RoleName = "homeowner" | "reviewer" | "admin";
+export type RoleName = "homeowner" | "reviewer" | "admin" | "global_admin";
+export type HoaRoleName = "hoa_admin" | "arc_reviewer";
 type AppSupabaseClient = SupabaseClient<Database>;
 type Hoa = Database["public"]["Tables"]["hoas"]["Row"];
+type HoaRole = Database["public"]["Tables"]["hoa_roles"]["Row"] & {
+  hoa: Pick<Hoa, "id" | "name" | "slug" | "description"> | null;
+};
 type ApprovedMembership = Database["public"]["Tables"]["hoa_memberships"]["Row"] & {
   hoa: Pick<Hoa, "id" | "name" | "slug" | "description"> | null;
 };
@@ -17,24 +21,85 @@ export async function getUserRoles(
   return (data ?? []).map((r: { role: RoleName }) => r.role);
 }
 
+export async function getUserHoaRoles(
+  supabase: AppSupabaseClient,
+  userId: string,
+): Promise<HoaRole[]> {
+  const { data, error } = await supabase
+    .from("hoa_roles")
+    .select("*,hoa:hoas(id,name,slug,description)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as HoaRole[];
+}
+
 export function isStaffRole(roles: RoleName[]) {
-  return roles.includes("admin") || roles.includes("reviewer");
+  return roles.includes("global_admin") || roles.includes("admin") || roles.includes("reviewer");
 }
 
-export function isAdminRole(roles: RoleName[]) {
-  return roles.includes("admin");
+export function isGlobalAdminRole(roles: RoleName[]) {
+  return roles.includes("global_admin") || roles.includes("admin");
 }
 
-export async function ensureAdmin(supabase: AppSupabaseClient, userId: string) {
+export async function ensureGlobalAdmin(supabase: AppSupabaseClient, userId: string) {
   const roles = await getUserRoles(supabase, userId);
-  if (!isAdminRole(roles)) throw new Error("Admins only");
+  if (!isGlobalAdminRole(roles)) throw new Error("Global admin access required");
   return roles;
 }
+
+export const ensureAdmin = ensureGlobalAdmin;
 
 export async function ensureStaff(supabase: AppSupabaseClient, userId: string) {
   const roles = await getUserRoles(supabase, userId);
-  if (!isStaffRole(roles)) throw new Error("Forbidden");
+  const hoaRoles = await getUserHoaRoles(supabase, userId);
+  if (!isStaffRole(roles) && hoaRoles.length === 0) throw new Error("Forbidden");
   return roles;
+}
+
+export async function canManageHoa(
+  supabase: AppSupabaseClient,
+  userId: string,
+  hoaId: string,
+) {
+  const roles = await getUserRoles(supabase, userId);
+  if (isGlobalAdminRole(roles)) return true;
+  const hoaRoles = await getUserHoaRoles(supabase, userId);
+  return hoaRoles.some((role) => role.hoa_id === hoaId && role.role === "hoa_admin");
+}
+
+export async function canReviewHoa(
+  supabase: AppSupabaseClient,
+  userId: string,
+  hoaId: string,
+) {
+  if (await canManageHoa(supabase, userId, hoaId)) return true;
+  const roles = await getUserRoles(supabase, userId);
+  if (roles.includes("reviewer")) return true;
+  const hoaRoles = await getUserHoaRoles(supabase, userId);
+  return hoaRoles.some(
+    (role) => role.hoa_id === hoaId && role.role === "arc_reviewer",
+  );
+}
+
+export async function ensureCanManageHoa(
+  supabase: AppSupabaseClient,
+  userId: string,
+  hoaId: string,
+) {
+  if (!(await canManageHoa(supabase, userId, hoaId))) {
+    throw new Error("HOA admin access required");
+  }
+}
+
+export async function ensureCanReviewHoa(
+  supabase: AppSupabaseClient,
+  userId: string,
+  hoaId: string,
+) {
+  if (!(await canReviewHoa(supabase, userId, hoaId))) {
+    throw new Error("ARC reviewer access required");
+  }
 }
 
 export async function getDefaultHoa(supabase: AppSupabaseClient) {
@@ -75,6 +140,40 @@ export async function getApprovedMemberships(
   return (data ?? []) as ApprovedMembership[];
 }
 
+export async function listManageableHoas(supabase: AppSupabaseClient, userId: string) {
+  const roles = await getUserRoles(supabase, userId);
+  if (isGlobalAdminRole(roles)) {
+    const { data, error } = await supabase
+      .from("hoas")
+      .select("id,name,slug,description")
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  }
+
+  const hoaRoles = await getUserHoaRoles(supabase, userId);
+  return hoaRoles
+    .filter((role) => role.role === "hoa_admin" && role.hoa)
+    .map((role) => role.hoa!);
+}
+
+export async function listReviewableHoas(supabase: AppSupabaseClient, userId: string) {
+  const roles = await getUserRoles(supabase, userId);
+  if (isGlobalAdminRole(roles) || roles.includes("reviewer")) {
+    const { data, error } = await supabase
+      .from("hoas")
+      .select("id,name,slug,description")
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  }
+
+  const hoaRoles = await getUserHoaRoles(supabase, userId);
+  return hoaRoles
+    .filter((role) => (role.role === "hoa_admin" || role.role === "arc_reviewer") && role.hoa)
+    .map((role) => role.hoa!);
+}
+
 export async function getSubmissionHoa(supabase: AppSupabaseClient, userId: string) {
   const roles = await getUserRoles(supabase, userId);
   const memberships = await getApprovedMemberships(supabase, userId);
@@ -90,7 +189,7 @@ export async function getReadableHoa(
   hoaId?: string | null,
 ) {
   const roles = await getUserRoles(supabase, userId);
-  if (hoaId && isStaffRole(roles)) return getHoaOrDefault(supabase, hoaId);
+  if (hoaId && (await canReviewHoa(supabase, userId, hoaId))) return getHoaOrDefault(supabase, hoaId);
 
   const memberships = await getApprovedMemberships(supabase, userId);
   if (hoaId) {
@@ -101,6 +200,7 @@ export async function getReadableHoa(
 
   const membership = memberships[0];
   if (membership?.hoa) return membership.hoa;
-  if (isStaffRole(roles)) return getDefaultHoa(supabase);
+  const reviewable = await listReviewableHoas(supabase, userId);
+  if (reviewable[0]) return reviewable[0];
   throw new Error("Approved HOA members only");
 }
