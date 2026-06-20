@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/review/$id")({
 
 function ReviewOne() {
   const { id } = Route.useParams();
-  const { isGlobalAdmin } = useAuth();
+  const { isGlobalAdmin, roleViewMode } = useAuth();
   const navigate = useNavigate();
   const get = useServerFn(getApplication);
   const runFn = useServerFn(runReviewForApplication);
@@ -34,7 +34,7 @@ function ReviewOne() {
   const [submitting, setSubmitting] = useState(false);
 
   const reload = () =>
-    get({ data: { id } })
+    get({ data: { id, actingAs: roleViewMode } })
       .then((d: any) => {
         setData(d);
         const draft = d.reviews.find((r: any) => !r.is_final) ?? d.reviews[0];
@@ -48,7 +48,7 @@ function ReviewOne() {
   useEffect(() => {
     if (isGlobalAdmin) return;
     reload();
-  }, [id, isGlobalAdmin]);
+  }, [id, isGlobalAdmin, roleViewMode]);
 
   useEffect(() => {
     const path = data?.application?.application_pdf_path;
@@ -65,7 +65,7 @@ function ReviewOne() {
     setErr(null);
     setRunning(true);
     try {
-      await runFn({ data: { id } });
+      await runFn({ data: { id, actingAs: roleViewMode } });
       await reload();
     } catch (e: any) {
       setErr(e?.message ?? "AI review failed.");
@@ -86,6 +86,7 @@ function ReviewOne() {
           reviewId: draft.id,
           decision,
           homeownerMessage: message.trim(),
+          actingAs: roleViewMode,
         },
       });
       navigate({ to: "/applications/$id", params: { id } });

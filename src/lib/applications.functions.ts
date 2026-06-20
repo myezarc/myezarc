@@ -7,6 +7,7 @@ import {
   getSubmissionHoa,
   getUserRoles,
   listReviewableHoas,
+  isGlobalAdminRole,
 } from "@/lib/hoa-scope";
 
 const CreateAppSchema = z.object({
@@ -16,6 +17,57 @@ const CreateAppSchema = z.object({
   applicationPdfPath: z.string().min(1).max(1000),
   extractedText: z.string().min(1).max(400_000),
 });
+const ActingAsSchema = z
+  .object({
+    actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+  })
+  .optional()
+  .default({});
+
+const IdSchema = z.object({
+  id: z.string().uuid(),
+  actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+});
+
+const FinalizeSchema = z.object({
+  applicationId: z.string().uuid(),
+  reviewId: z.string().uuid(),
+  decision: z.enum(["approved", "conditional", "rejected"]),
+  homeownerMessage: z.string().trim().min(1).max(8000),
+  actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+});
+
+type ActingAs = z.infer<typeof ActingAsSchema>["actingAs"];
+
+async function isGlobalAdminActingAsReviewer(
+  supabase: Parameters<typeof getUserRoles>[0],
+  userId: string,
+  actingAs: ActingAs,
+) {
+  if (actingAs !== "arc_reviewer" && actingAs !== "hoa_admin") return false;
+  const roles = await getUserRoles(supabase, userId);
+  return isGlobalAdminRole(roles);
+}
+
+async function getReviewDataClient(
+  supabase: Parameters<typeof getUserRoles>[0],
+  userId: string,
+  actingAs: ActingAs,
+) {
+  if (!(await isGlobalAdminActingAsReviewer(supabase, userId, actingAs))) return supabase;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+async function ensureReviewAccess(
+  supabase: Parameters<typeof getUserRoles>[0],
+  userId: string,
+  hoaId: string,
+  actingAs: ActingAs,
+) {
+  if (await isGlobalAdminActingAsReviewer(supabase, userId, actingAs)) return;
+  await ensureCanReviewHoa(supabase, userId, hoaId);
+}
 
 export const createApplication = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -55,30 +107,37 @@ export const listMyApplications = createServerFn({ method: "GET" })
 
 export const listAllApplications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: unknown) => ActingAsSchema.parse(input))
+  .handler(async ({ data: input, context }) => {
     const { supabase, userId } = context;
-    const reviewableHoas = await listReviewableHoas(supabase, userId);
-    if (reviewableHoas.length === 0) throw new Error("ARC reviewer access required");
-    const { data, error } = await supabase
+    const actingAs = input?.actingAs;
+    const isActingReviewer = await isGlobalAdminActingAsReviewer(supabase, userId, actingAs);
+    const reviewableHoas = isActingReviewer ? [] : await listReviewableHoas(supabase, userId);
+    if (!isActingReviewer && reviewableHoas.length === 0)
+      throw new Error("ARC reviewer access required");
+    const client = await getReviewDataClient(supabase, userId, actingAs);
+    let query = client
       .from("applications")
       .select("id,title,status,created_at,homeowner_email,homeowner_id,hoa_id,hoa:hoas(name,slug)")
-      .in(
+      .order("created_at", { ascending: false });
+    if (!isActingReviewer) {
+      query = query.in(
         "hoa_id",
         reviewableHoas.map((hoa) => hoa.id),
-      )
-      .order("created_at", { ascending: false });
+      );
+    }
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data ?? [];
   });
-
-const IdSchema = z.object({ id: z.string().uuid() });
 
 export const getApplication = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => IdSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: app, error } = await supabase
+    const client = await getReviewDataClient(supabase, userId, data.actingAs);
+    const { data: app, error } = await client
       .from("applications")
       .select("*,hoa:hoas(name,slug)")
       .eq("id", data.id)
@@ -86,16 +145,16 @@ export const getApplication = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!app) throw new Error("Not found");
     if (app.homeowner_id !== userId) {
-      await ensureCanReviewHoa(supabase, userId, app.hoa_id);
+      await ensureReviewAccess(supabase, userId, app.hoa_id, data.actingAs);
     }
 
-    const { data: reviews } = await supabase
+    const { data: reviews } = await client
       .from("arc_reviews")
       .select("*")
       .eq("application_id", data.id)
       .order("created_at", { ascending: false });
 
-    const { data: messages } = await supabase
+    const { data: messages } = await client
       .from("messages")
       .select("*")
       .eq("application_id", data.id)
@@ -110,16 +169,17 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: app, error: aErr } = await supabase
+    const client = await getReviewDataClient(supabase, userId, data.actingAs);
+    const { data: app, error: aErr } = await client
       .from("applications")
       .select("id,hoa_id,extracted_text")
       .eq("id", data.id)
       .maybeSingle();
     if (aErr) throw new Error(aErr.message);
     if (!app?.extracted_text) throw new Error("Application has no extracted text.");
-    await ensureCanReviewHoa(supabase, userId, app.hoa_id);
+    await ensureReviewAccess(supabase, userId, app.hoa_id, data.actingAs);
 
-    const { data: guide, error: gErr } = await supabase
+    const { data: guide, error: gErr } = await client
       .from("hoa_guidelines")
       .select("extracted_text")
       .eq("hoa_id", app.hoa_id)
@@ -138,7 +198,7 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
       },
     });
 
-    const { data: review, error: rErr } = await supabase
+    const { data: review, error: rErr } = await client
       .from("arc_reviews")
       .insert({
         application_id: app.id,
@@ -155,33 +215,27 @@ export const runReviewForApplication = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw new Error(rErr.message);
 
-    await supabase.from("applications").update({ status: "in_review" }).eq("id", app.id);
+    await client.from("applications").update({ status: "in_review" }).eq("id", app.id);
 
     return review;
   });
-
-const FinalizeSchema = z.object({
-  applicationId: z.string().uuid(),
-  reviewId: z.string().uuid(),
-  decision: z.enum(["approved", "conditional", "rejected"]),
-  homeownerMessage: z.string().trim().min(1).max(8000),
-});
 
 export const finalizeReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => FinalizeSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { data: app, error: appError } = await supabase
+    const client = await getReviewDataClient(supabase, userId, data.actingAs);
+    const { data: app, error: appError } = await client
       .from("applications")
       .select("hoa_id")
       .eq("id", data.applicationId)
       .maybeSingle();
     if (appError) throw new Error(appError.message);
     if (!app) throw new Error("Application not found");
-    await ensureCanReviewHoa(supabase, userId, app.hoa_id);
+    await ensureReviewAccess(supabase, userId, app.hoa_id, data.actingAs);
 
-    const { error } = await supabase.rpc("finalize_arc_review", {
+    const { error } = await client.rpc("finalize_arc_review", {
       _application_id: data.applicationId,
       _review_id: data.reviewId,
       _decision: data.decision,
