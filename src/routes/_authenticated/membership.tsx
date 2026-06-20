@@ -192,7 +192,11 @@ function MembershipPage() {
     );
   }
 
-  const showForm = !membership || membership.status === "rejected" || editing;
+  const showForm =
+    mode === "existing" &&
+    hoas.length > 0 &&
+    Boolean(selectedHoaId) &&
+    (!membership || membership.status === "rejected" || editing);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -311,7 +315,7 @@ function MembershipPage() {
         </div>
       )}
 
-      {mode === "existing" && showForm && (
+      {showForm && (
         <form
           onSubmit={onSubmit}
           className="mt-6 space-y-4 rounded-2xl border border-border bg-surface p-6"
