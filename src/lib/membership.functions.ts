@@ -63,6 +63,12 @@ export const listHoas = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const listAdminHoas = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    return listManageableHoas(context.supabase, context.userId);
+  });
+
 export const submitMembership = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => MembershipSchema.parse(input))

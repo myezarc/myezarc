@@ -6,7 +6,7 @@ import { extractTextFromFile } from "@/lib/extract-text";
 import { ocrImages } from "@/lib/ocr.functions";
 import { uploadGuideline, getActiveGuideline } from "@/lib/guidelines.functions";
 import { uploadArcForm, getActiveArcForm } from "@/lib/resources.functions";
-import { listHoas } from "@/lib/membership.functions";
+import { listAdminHoas } from "@/lib/membership.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin/guidelines")({
@@ -18,7 +18,7 @@ function GuidelinesAdmin() {
   const ocr = useServerFn(ocrImages);
   const upload = useServerFn(uploadGuideline);
   const get = useServerFn(getActiveGuideline);
-  const fetchHoas = useServerFn(listHoas);
+  const fetchHoas = useServerFn(listAdminHoas);
 
   const [active, setActive] = useState<any>(null);
   const [hoas, setHoas] = useState<Array<{ id: string; name: string }>>([]);
@@ -28,9 +28,11 @@ function GuidelinesAdmin() {
   const [stage, setStage] = useState<"idle" | "extracting" | "uploading" | "saving">("idle");
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const selectedHoa = hoas.find((hoa) => hoa.id === selectedHoaId) ?? null;
 
   const reload = (hoaId = selectedHoaId) => {
     if (!hoaId) return Promise.resolve();
+    setActive(null);
     return get({ data: { hoaId } })
       .then(setActive)
       .catch(() => {});
@@ -74,7 +76,7 @@ function GuidelinesAdmin() {
           extractedText: text,
         },
       });
-      setInfo("Guideline activated.");
+      setInfo(`Guideline activated for ${selectedHoa?.name ?? "this HOA"}.`);
       setFile(null);
       await reload();
     } catch (e: any) {
@@ -88,16 +90,36 @@ function GuidelinesAdmin() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-display text-3xl font-bold text-brand md:text-4xl">HOA Guideline</h1>
+      <h1 className="font-display text-3xl font-bold text-brand md:text-4xl">
+        HOA Documents
+      </h1>
       <p className="mt-2 text-muted-foreground">
-        Upload each community's architectural guideline. The AI uses the active guideline for the
-        application's HOA.
+        Select an active HOA account, then upload that community's architectural guideline and
+        blank ARC application form.
       </p>
 
-      {hoas.length > 1 && (
-        <label className="mt-6 block">
+      {hoas.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+          No active HOA accounts are available for this admin account yet.
+        </div>
+      ) : (
+        <section className="mt-6 rounded-2xl border border-border bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Acting on HOA
+              </p>
+              <p className="mt-1 font-display text-xl font-bold text-brand">
+                {selectedHoa?.name ?? "Select an HOA"}
+              </p>
+            </div>
+            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
+              Active HOA
+            </span>
+          </div>
+          <label className="mt-4 block">
           <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Community
+            HOA account
           </span>
           <select
             value={selectedHoaId}
@@ -111,6 +133,7 @@ function GuidelinesAdmin() {
             ))}
           </select>
         </label>
+        </section>
       )}
 
       <div className="mt-6 rounded-2xl border border-border bg-surface p-5">
@@ -132,7 +155,9 @@ function GuidelinesAdmin() {
       </div>
 
       <div className="mt-6 space-y-4 rounded-2xl border border-border bg-background p-6">
-        <p className="font-display font-bold text-brand">Upload new guideline</p>
+        <p className="font-display font-bold text-brand">
+          Upload new guideline{selectedHoa ? ` for ${selectedHoa.name}` : ""}
+        </p>
         <p className="text-xs text-muted-foreground">
           Replacing the active guideline immediately deactivates the old one.
         </p>
@@ -149,7 +174,7 @@ function GuidelinesAdmin() {
           />
         </label>
 
-        <Drop file={file} onFile={setFile} />
+        <Drop file={file} label="Drop guideline PDF here" onFile={setFile} />
 
         {err && (
           <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
@@ -175,12 +200,12 @@ function GuidelinesAdmin() {
         </button>
       </div>
 
-      <ArcFormSection hoaId={selectedHoaId} />
+      <ArcFormSection hoaId={selectedHoaId} hoaName={selectedHoa?.name ?? ""} />
     </div>
   );
 }
 
-function ArcFormSection({ hoaId }: { hoaId: string }) {
+function ArcFormSection({ hoaId, hoaName }: { hoaId: string; hoaName: string }) {
   const upload = useServerFn(uploadArcForm);
   const get = useServerFn(getActiveArcForm);
   const [active, setActive] = useState<any>(null);
@@ -213,7 +238,7 @@ function ArcFormSection({ hoaId }: { hoaId: string }) {
       if (error) throw new Error(error.message);
       setStage("saving");
       await upload({ data: { hoaId, title: title.trim(), storagePath: path } });
-      setInfo("ARC application form activated.");
+      setInfo(`ARC application form activated${hoaName ? ` for ${hoaName}` : ""}.`);
       setFile(null);
       await reload();
     } catch (e: any) {
@@ -229,7 +254,8 @@ function ArcFormSection({ hoaId }: { hoaId: string }) {
     <div className="mt-10 max-w-3xl">
       <h2 className="font-display text-2xl font-bold text-brand">ARC Application Form</h2>
       <p className="mt-2 text-muted-foreground">
-        Upload the blank ARC application form. Approved members can download it from Resources.
+        Upload the blank ARC application form{hoaName ? ` for ${hoaName}` : ""}. Approved members
+        can download it from Resources.
       </p>
 
       <div className="mt-6 rounded-2xl border border-border bg-surface p-5">
@@ -251,7 +277,9 @@ function ArcFormSection({ hoaId }: { hoaId: string }) {
       </div>
 
       <div className="mt-6 space-y-4 rounded-2xl border border-border bg-background p-6">
-        <p className="font-display font-bold text-brand">Upload new form</p>
+        <p className="font-display font-bold text-brand">
+          Upload new form{hoaName ? ` for ${hoaName}` : ""}
+        </p>
 
         <label className="block">
           <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -265,7 +293,7 @@ function ArcFormSection({ hoaId }: { hoaId: string }) {
           />
         </label>
 
-        <Drop file={file} onFile={setFile} />
+        <Drop file={file} label="Drop ARC application PDF here" onFile={setFile} />
 
         {err && (
           <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
@@ -292,7 +320,15 @@ function ArcFormSection({ hoaId }: { hoaId: string }) {
   );
 }
 
-function Drop({ file, onFile }: { file: File | null; onFile: (f: File | null) => void }) {
+function Drop({
+  file,
+  label,
+  onFile,
+}: {
+  file: File | null;
+  label: string;
+  onFile: (f: File | null) => void;
+}) {
   const [drag, setDrag] = useState(false);
   const handle = (f?: File) => {
     if (!f) return;
@@ -335,7 +371,7 @@ function Drop({ file, onFile }: { file: File | null; onFile: (f: File | null) =>
       }`}
     >
       <UploadCloud className="size-6 text-accent" />
-      <p className="text-sm font-semibold text-brand">Drop guideline PDF here</p>
+      <p className="text-sm font-semibold text-brand">{label}</p>
       <input
         type="file"
         accept="application/pdf,.pdf"
