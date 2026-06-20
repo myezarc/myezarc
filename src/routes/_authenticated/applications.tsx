@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listMyApplications } from "@/lib/applications.functions";
@@ -10,12 +10,18 @@ import { MembershipGate } from "@/components/membership-gate";
 
 export const Route = createFileRoute("/_authenticated/applications")({
   head: () => ({ meta: [{ title: "My applications — Ez-ARC" }] }),
-  component: () => (
+  component: ApplicationsRoute,
+});
+
+function ApplicationsRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (pathname !== "/applications") return <Outlet />;
+  return (
     <MembershipGate>
       <ApplicationsList />
     </MembershipGate>
-  ),
-});
+  );
+}
 
 function ApplicationsList() {
   const { isGlobalAdmin, isStaff } = useAuth();

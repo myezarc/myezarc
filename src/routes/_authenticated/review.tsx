@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listAllApplications } from "@/lib/applications.functions";
@@ -7,8 +7,14 @@ import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/review")({
   head: () => ({ meta: [{ title: "Review queue — Ez-ARC" }] }),
-  component: ReviewQueue,
+  component: ReviewRoute,
 });
+
+function ReviewRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (pathname !== "/review") return <Outlet />;
+  return <ReviewQueue />;
+}
 
 function ReviewQueue() {
   const { loading, isGlobalAdmin, isHoaAdmin, isArcReviewer, roleViewMode, actingHoaId } = useAuth();
