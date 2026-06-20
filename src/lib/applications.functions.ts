@@ -45,22 +45,29 @@ const FinalizeSchema = z.object({
 
 type ActingAs = z.infer<typeof ActingAsSchema>["actingAs"];
 
+async function isGlobalAdmin(
+  supabase: Parameters<typeof getUserRoles>[0],
+  userId: string,
+) {
+  const roles = await getUserRoles(supabase, userId);
+  return isGlobalAdminRole(roles);
+}
+
 async function isGlobalAdminActingAsReviewer(
   supabase: Parameters<typeof getUserRoles>[0],
   userId: string,
   actingAs: ActingAs,
 ) {
   if (actingAs !== "arc_reviewer" && actingAs !== "hoa_admin") return false;
-  const roles = await getUserRoles(supabase, userId);
-  return isGlobalAdminRole(roles);
+  return isGlobalAdmin(supabase, userId);
 }
 
 async function getReviewDataClient(
   supabase: Parameters<typeof getUserRoles>[0],
   userId: string,
-  actingAs: ActingAs,
+  _actingAs: ActingAs,
 ) {
-  if (!(await isGlobalAdminActingAsReviewer(supabase, userId, actingAs))) return supabase;
+  if (!(await isGlobalAdmin(supabase, userId))) return supabase;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
@@ -71,7 +78,7 @@ async function ensureReviewAccess(
   hoaId: string,
   actingAs: ActingAs,
 ) {
-  if (await isGlobalAdminActingAsReviewer(supabase, userId, actingAs)) return;
+  if (await isGlobalAdmin(supabase, userId)) return;
   await ensureCanReviewHoa(supabase, userId, hoaId);
 }
 
@@ -122,16 +129,16 @@ export const listAllApplications = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const actingAs = input?.actingAs;
     const actingHoaId = input?.actingHoaId;
-    const isActingReviewer = await isGlobalAdminActingAsReviewer(supabase, userId, actingAs);
-    const reviewableHoas = isActingReviewer ? [] : await listReviewableHoas(supabase, userId);
-    if (!isActingReviewer && reviewableHoas.length === 0)
+    const hasGlobalAdminAccess = await isGlobalAdmin(supabase, userId);
+    const reviewableHoas = hasGlobalAdminAccess ? [] : await listReviewableHoas(supabase, userId);
+    if (!hasGlobalAdminAccess && reviewableHoas.length === 0)
       throw new Error("ARC reviewer access required");
     const client = await getReviewDataClient(supabase, userId, actingAs);
     let query = client
       .from("applications")
       .select("id,title,status,created_at,homeowner_email,homeowner_id,hoa_id,hoa:hoas(name,slug)")
       .order("created_at", { ascending: false });
-    if (!isActingReviewer) {
+    if (!hasGlobalAdminAccess) {
       query = query.in(
         "hoa_id",
         reviewableHoas.map((hoa) => hoa.id),

@@ -66,7 +66,7 @@ export async function canManageHoa(supabase: AppSupabaseClient, userId: string, 
 
 export async function canReviewHoa(supabase: AppSupabaseClient, userId: string, hoaId: string) {
   const roles = await getUserRoles(supabase, userId);
-  if (roles.includes("reviewer")) return true;
+  if (isGlobalAdminRole(roles) || roles.includes("reviewer")) return true;
   const hoaRoles = await getUserHoaRoles(supabase, userId);
   return hoaRoles.some(
     (role) => role.hoa_id === hoaId && (role.role === "hoa_admin" || role.role === "arc_reviewer"),
@@ -148,7 +148,7 @@ export async function listManageableHoas(supabase: AppSupabaseClient, userId: st
 
 export async function listReviewableHoas(supabase: AppSupabaseClient, userId: string) {
   const roles = await getUserRoles(supabase, userId);
-  if (roles.includes("reviewer")) {
+  if (isGlobalAdminRole(roles) || roles.includes("reviewer")) {
     const { data, error } = await supabase
       .from("hoas")
       .select("id,name,slug,description")
