@@ -289,7 +289,9 @@ function MembershipPage() {
             hoaName={hoa?.name ?? "this HOA"}
           />
           <div className="mt-6 rounded-2xl border border-border bg-surface p-6">
-            <p className="font-display font-bold text-brand">Your submitted info</p>
+            <p className="font-display font-bold text-brand">
+              Your {hoa?.name ?? "HOA"} membership info
+            </p>
             <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <Row label="Address">
                 {membership.street_address}
@@ -557,7 +559,7 @@ function StatusBanner({
       <Banner
         tone="green"
         icon={CheckCircle2}
-        title="Approved"
+        title={`Approved for ${hoaName}`}
         body={`You're a member of ${hoaName}. You can now submit ARC applications.`}
       />
     );
