@@ -41,6 +41,23 @@ export const getMyMembership = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => HoaInputSchema.parse(input))
   .handler(async ({ data, context }) => {
+    if (!data?.hoaId) {
+      const { data: memberships, error: membershipError } = await context.supabase
+        .from("hoa_memberships")
+        .select("*,hoa:hoas(id,name,slug,description)")
+        .eq("user_id", context.userId)
+        .order("updated_at", { ascending: false });
+      if (membershipError) throw new Error(membershipError.message);
+      const membership =
+        (memberships ?? []).find((row) => row.status === "approved") ??
+        (memberships ?? []).find((row) => row.status === "pending") ??
+        (memberships ?? [])[0];
+      if (membership?.hoa) {
+        const { hoa, ...membershipRow } = membership;
+        return { hoa, membership: membershipRow };
+      }
+    }
+
     const hoa = await getHoaOrDefault(context.supabase, data?.hoaId);
     const { data: membership, error } = await context.supabase
       .from("hoa_memberships")

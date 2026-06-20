@@ -45,6 +45,7 @@ function Dashboard() {
       : isStaff
         ? "ARC Reviewer"
         : "Home Owner";
+  const showHomeownerHoa = !isGlobalAdmin && !isStaff && memberStatus === "approved";
 
   useEffect(() => {
     if (
@@ -121,10 +122,17 @@ function Dashboard() {
             <h1 className="mt-1 font-display text-3xl font-bold text-brand md:text-4xl">
               {isGlobalAdmin ? "Global Admin Dashboard" : `Hi${fullName ? `, ${fullName}` : ""}`}
             </h1>
+            {showHomeownerHoa && (
+              <p className="mt-2 inline-flex rounded-full bg-accent/10 px-3 py-1 text-sm font-bold text-accent">
+                HOA: {hoaName}
+              </p>
+            )}
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground md:text-base">
               {isGlobalAdmin
                 ? "Manage HOA accounts, memberships, guidelines, users, and review activity from one umbrella view."
-                : "Start a request, check your applications, or continue the ARC review workflow."}
+                : showHomeownerHoa
+                  ? `You are approved for ${hoaName}. Start a request, check your applications, or continue the ARC review workflow.`
+                  : "Start a request, check your applications, or continue the ARC review workflow."}
             </p>
           </div>
           <div className="shrink-0 rounded-xl border border-border bg-background px-3 py-2 text-right">
@@ -192,7 +200,11 @@ function Dashboard() {
             to="/apply"
             icon={FileText}
             title="Submit a request"
-            desc="Upload your application PDF and we'll route it to your ARC committee."
+            desc={
+              showHomeownerHoa
+                ? `Upload your application PDF for ${hoaName} and we'll route it to your ARC committee.`
+                : "Upload your application PDF and we'll route it to your ARC committee."
+            }
           />
         )}
         {!isGlobalAdmin && (
