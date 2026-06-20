@@ -41,6 +41,17 @@ const AdminHoaInputSchema = z
   .optional()
   .default({});
 
+function normalizeHoaName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\bhomeowners association\b/g, "")
+    .replace(/\bhome owners association\b/g, "")
+    .replace(/\bhoa\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 export const getMyMembership = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => HoaInputSchema.parse(input))
@@ -148,6 +159,16 @@ export const submitHoaRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => HoaRequestSchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { data: hoas, error: hoaError } = await context.supabase
+      .from("hoas")
+      .select("name");
+    if (hoaError) throw new Error(hoaError.message);
+    const requestedName = normalizeHoaName(data.requested_hoa_name);
+    const matchedHoa = (hoas ?? []).find((hoa) => normalizeHoaName(hoa.name) === requestedName);
+    if (matchedHoa) {
+      throw new Error(`${matchedHoa.name} is already listed. Choose it from My HOA is listed.`);
+    }
+
     const { data: existing, error: existingError } = await context.supabase
       .from("hoa_requests")
       .select("id")
