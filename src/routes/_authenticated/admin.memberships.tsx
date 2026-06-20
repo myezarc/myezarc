@@ -196,17 +196,19 @@ function AdminMembershipsPage() {
             <li key={row.id} className="rounded-2xl border border-border bg-surface p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-display font-bold text-brand">
-                    {row.profile?.full_name || row.email}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-display font-bold text-brand">
+                      {row.profile?.full_name || row.email}
+                    </p>
+                    {row.hoa?.name && (
+                      <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">
+                        HOA: {row.hoa.name}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {row.email} · {row.phone}
                   </p>
-                  {row.hoa?.name && (
-                    <p className="mt-1 text-sm font-semibold text-accent">
-                      HOA: {row.hoa.name}
-                    </p>
-                  )}
                   <p className="mt-1 text-sm text-brand">
                     {row.street_address}
                     {row.unit ? `, ${row.unit}` : ""}, {row.city}, {row.state} {row.zip}
@@ -279,7 +281,7 @@ function StatusPill({ status, hoaName }: { status: string; hoaName?: string | nu
   };
   const m = map[status] ?? map.pending;
   const Icon = m.icon;
-  const label = status === "approved" && hoaName ? `Approved for ${hoaName}` : m.label;
+  const label = hoaName ? `${m.label} for ${hoaName}` : m.label;
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${m.cls}`}
