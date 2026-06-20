@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, CheckCircle2, Clock, PlusCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -59,56 +59,75 @@ function MembershipPage() {
     note: "",
   });
 
-  const loadMembership = async (hoaId: string) => {
-    const res = await fetchMembership({ data: { hoaId } });
-    setHoa(res.hoa);
-    setMembership(res.membership);
-    if (res.membership) {
-      setForm({
-        street_address: res.membership.street_address ?? "",
-        unit: res.membership.unit ?? "",
-        city: res.membership.city ?? "",
-        state: res.membership.state ?? "",
-        zip: res.membership.zip ?? "",
-        phone: res.membership.phone ?? "",
-        email: res.membership.email ?? user?.email ?? "",
-        note: res.membership.note ?? "",
-      });
-    } else {
-      setForm({
-        street_address: "",
-        unit: "",
-        city: "",
-        state: "",
-        zip: "",
-        phone: "",
-        email: user?.email ?? "",
-        note: "",
-      });
-    }
-  };
+  const loadMembership = useCallback(
+    async (hoaId: string) => {
+      const res = await fetchMembership({ data: { hoaId } });
+      setHoa(res.hoa);
+      setMembership(res.membership);
+      if (res.membership) {
+        setForm({
+          street_address: res.membership.street_address ?? "",
+          unit: res.membership.unit ?? "",
+          city: res.membership.city ?? "",
+          state: res.membership.state ?? "",
+          zip: res.membership.zip ?? "",
+          phone: res.membership.phone ?? "",
+          email: res.membership.email ?? user?.email ?? "",
+          note: res.membership.note ?? "",
+        });
+      } else {
+        setForm({
+          street_address: "",
+          unit: "",
+          city: "",
+          state: "",
+          zip: "",
+          phone: "",
+          email: user?.email ?? "",
+          note: "",
+        });
+      }
+    },
+    [user?.email],
+  );
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      if (isGlobalAdmin) {
-        setLoading(false);
-        return;
+      setError(null);
+      setLoading(true);
+      try {
+        if (isGlobalAdmin) return;
+        const allHoas = await fetchHoas();
+        if (cancelled) return;
+        setHoas(allHoas);
+        const firstHoa = allHoas[0];
+        if (firstHoa) {
+          setSelectedHoaId(firstHoa.id);
+          await loadMembership(firstHoa.id);
+        } else {
+          setMode("new");
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message ?? "Failed to load HOA membership.");
+          setMode("new");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      const allHoas = await fetchHoas();
-      setHoas(allHoas);
-      const firstHoa = allHoas[0];
-      if (firstHoa) {
-        setSelectedHoaId(firstHoa.id);
-        await loadMembership(firstHoa.id);
-      }
-      setLoading(false);
     })();
-  }, [fetchHoas, isGlobalAdmin, user?.email]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isGlobalAdmin, user?.email]);
 
   useEffect(() => {
     if (!selectedHoaId || loading) return;
-    loadMembership(selectedHoaId);
-  }, [selectedHoaId]);
+    loadMembership(selectedHoaId).catch((err: any) => {
+      setError(err?.message ?? "Failed to load HOA membership.");
+    });
+  }, [loading, selectedHoaId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,6 +201,7 @@ function MembershipPage() {
         {hoa?.name ?? "HOA"}
       </h1>
       {hoa?.description && <p className="mt-2 text-muted-foreground">{hoa.description}</p>}
+      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <button
@@ -216,7 +236,7 @@ function MembershipPage() {
         </button>
       </div>
 
-      {mode === "existing" && (
+      {mode === "existing" && hoas.length > 0 && (
         <label className="mt-4 block">
           <span className="mb-1 block text-sm font-semibold text-brand">
             Choose your HOA community
@@ -236,6 +256,25 @@ function MembershipPage() {
             ))}
           </select>
         </label>
+      )}
+
+      {mode === "existing" && hoas.length === 0 && (
+        <div className="mt-6 rounded-2xl border border-border bg-surface p-6">
+          <p className="font-display font-bold text-brand">No HOA accounts listed yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Request your HOA so the Global Admin can review and add it.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("new");
+              setError(null);
+            }}
+            className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-bold text-accent-foreground hover:opacity-90"
+          >
+            Request a new HOA
+          </button>
+        </div>
       )}
 
       {mode === "existing" && membership && !editing && (
