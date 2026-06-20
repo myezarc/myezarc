@@ -203,8 +203,8 @@ function AdminMembershipsPage() {
                     {row.email} · {row.phone}
                   </p>
                   {row.hoa?.name && (
-                    <p className="mt-1 text-xs font-bold uppercase tracking-wider text-accent">
-                      {row.hoa.name}
+                    <p className="mt-1 text-sm font-semibold text-accent">
+                      HOA: {row.hoa.name}
                     </p>
                   )}
                   <p className="mt-1 text-sm text-brand">
@@ -220,7 +220,7 @@ function AdminMembershipsPage() {
                     </p>
                   )}
                 </div>
-                <StatusPill status={row.status} />
+                <StatusPill status={row.status} hoaName={row.hoa?.name} />
               </div>
               {row.status !== "approved" && (
                 <div className="mt-4 flex gap-2">
@@ -270,7 +270,7 @@ function AdminMembershipsPage() {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
+function StatusPill({ status, hoaName }: { status: string; hoaName?: string | null }) {
   const map: Record<string, { cls: string; icon: any; label: string }> = {
     pending: { cls: "bg-amber-100 text-amber-900", icon: Clock, label: "Pending" },
     approved: { cls: "bg-green-100 text-green-900", icon: CheckCircle2, label: "Approved" },
@@ -279,11 +279,12 @@ function StatusPill({ status }: { status: string }) {
   };
   const m = map[status] ?? map.pending;
   const Icon = m.icon;
+  const label = status === "approved" && hoaName ? `Approved for ${hoaName}` : m.label;
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${m.cls}`}
     >
-      <Icon className="size-3.5" /> {m.label}
+      <Icon className="size-3.5" /> {label}
     </span>
   );
 }
