@@ -18,7 +18,14 @@ export const Route = createFileRoute("/_authenticated/review/$id")({
 
 function ReviewOne() {
   const { id } = Route.useParams();
-  const { isGlobalAdmin, roleViewMode, actingHoaId } = useAuth();
+  const {
+    loading,
+    isGlobalAdmin,
+    isHoaAdmin,
+    isArcReviewer,
+    roleViewMode,
+    actingHoaId,
+  } = useAuth();
   const navigate = useNavigate();
   const get = useServerFn(getApplication);
   const runFn = useServerFn(runReviewForApplication);
@@ -32,6 +39,8 @@ function ReviewOne() {
   const [decision, setDecision] = useState<"approved" | "conditional" | "rejected">("approved");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const canReview = isHoaAdmin || isArcReviewer;
+  const platformOnly = isGlobalAdmin && roleViewMode === "global_admin";
 
   const reload = () =>
     get({ data: { id, actingAs: roleViewMode, actingHoaId: actingHoaId || null } })
@@ -46,9 +55,9 @@ function ReviewOne() {
       .catch((e: any) => setErr(e?.message ?? "Failed."));
 
   useEffect(() => {
-    if (isGlobalAdmin) return;
+    if (loading || platformOnly || !canReview) return;
     reload();
-  }, [actingHoaId, id, isGlobalAdmin, roleViewMode]);
+  }, [actingHoaId, canReview, id, loading, platformOnly, roleViewMode]);
 
   useEffect(() => {
     const path = data?.application?.application_pdf_path;
@@ -98,13 +107,26 @@ function ReviewOne() {
     }
   };
 
-  if (isGlobalAdmin) {
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  if (platformOnly) {
     return (
       <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
         <h1 className="font-display text-2xl font-bold text-brand">Platform oversight only</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Global Admins do not access ARC application details. Use HOA accounts and Users for
           high-level HOA membership, board, and reviewer information.
+        </p>
+      </div>
+    );
+  }
+
+  if (!canReview) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
+        <h1 className="font-display text-2xl font-bold text-brand">ARC reviewer access required</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Switch to Reviewer or HOA Admin to open application details.
         </p>
       </div>
     );
@@ -151,16 +173,58 @@ function ReviewOne() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_440px]">
         <div className="space-y-5">
-          {pdfUrl && (
-            <a
-              href={pdfUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block rounded-xl border border-border bg-background px-5 py-3 text-sm font-semibold text-accent hover:underline"
-            >
-              Open application PDF →
-            </a>
-          )}
+          <div className="rounded-2xl border border-border bg-background p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-display font-bold text-brand">Application details</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Submitted information and extracted document text for committee review.
+                </p>
+              </div>
+              {pdfUrl && (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-accent hover:underline"
+                >
+                  Open PDF
+                </a>
+              )}
+            </div>
+
+            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+              <DetailItem label="HOA" value={app.hoa?.name ?? "Not listed"} />
+              <DetailItem label="Status" value={app.status} />
+              <DetailItem label="Contact email" value={app.homeowner_email ?? "Not provided"} />
+              <DetailItem
+                label="Submitted"
+                value={new Date(app.submitted_at ?? app.created_at).toLocaleString()}
+              />
+            </dl>
+
+            {app.description && (
+              <div className="mt-5 rounded-xl bg-surface p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Homeowner description
+                </p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-brand">
+                  {app.description}
+                </p>
+              </div>
+            )}
+
+            {app.extracted_text && (
+              <details className="mt-5 rounded-xl border border-border bg-surface p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-brand">
+                  Extracted application text
+                </summary>
+                <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-background p-3 text-xs leading-relaxed text-muted-foreground">
+                  {app.extracted_text}
+                </pre>
+              </details>
+            )}
+          </div>
 
           {!review && (
             <div className="rounded-2xl border border-dashed border-border bg-surface p-8 text-center">
@@ -198,6 +262,36 @@ function ReviewOne() {
               </div>
               <div className="space-y-5 p-5">
                 <p className="text-sm leading-relaxed">{review.summary}</p>
+                {review.form_section && (
+                  <div className="rounded-xl border border-border bg-surface p-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Required form section
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-brand">
+                      {review.form_section.found
+                        ? review.form_section.sectionTitle
+                        : "No explicit form section found"}
+                    </p>
+                    {review.form_section.locationHint && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {review.form_section.locationHint}
+                      </p>
+                    )}
+                    {Array.isArray(review.form_section.requiredFields) &&
+                      review.form_section.requiredFields.length > 0 && (
+                        <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                          {review.form_section.requiredFields.map((field: any, i: number) => (
+                            <li key={i} className="rounded-lg bg-background p-3">
+                              <p className="font-semibold text-brand">{field.name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {field.description}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </div>
+                )}
                 {Array.isArray(review.findings) && review.findings.length > 0 && (
                   <ul className="divide-y divide-border rounded-xl border border-border">
                     {review.findings.map((f: any, i: number) => (
@@ -265,6 +359,15 @@ function ReviewOne() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-surface p-4">
+      <dt className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-semibold text-brand">{value}</dd>
     </div>
   );
 }

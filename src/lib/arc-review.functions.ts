@@ -49,6 +49,13 @@ C) Produce a structured review:
 - findings: one entry per checked item. Use "pass" / "warn" / "fail". Be specific — quote the rule or required field, and quote/cite what the application says (or note that it is missing).
 - homeownerMessage: A warm, neighbor-friendly paragraph addressed to the homeowner. Plain English. Thank them, then list exactly what they need to do to fix any issues, referencing the relevant guideline section. If approved, just say so warmly.
 
+Checklist requirements:
+- If you find an application/form section in the guideline, create a finding for EVERY required field in that form section.
+- Always check the main ARC completeness items when they are relevant to the project: homeowner/contact information, property address or lot/unit, project description/scope, site plan or drawing, dimensions/height/placement, materials, colors/finish, contractor/permit details if mentioned, signatures/acknowledgements, and neighbor impact if mentioned.
+- For substantive HOA rules, create findings only for rules actually present in the guideline. Do not invent setback, height, color, or material rules.
+- If the application does not provide enough information to verify a rule, use "warn" and explain the missing information. Use "fail" for a clear hard-rule conflict or a critical missing required item.
+- Prefer at least 6 findings when the documents contain enough information. More is better when there are more required fields or rules.
+
 Be strict but fair. NEVER invent rules or fields that are not in the guideline. If the guideline doesn't contain an application-form section, set formSection.found = false and base your review only on substantive rules you can verify.`;
 
 export const runArcReview = createServerFn({ method: "POST" })
