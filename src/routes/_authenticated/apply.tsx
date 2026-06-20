@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, UploadCloud, FileText, X, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,11 @@ function ApplyPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const busy = stage !== "idle";
+
+  useEffect(() => {
+    if (!user?.email) return;
+    setEmail((current) => current || user.email!);
+  }, [user?.email]);
 
   if (isGlobalAdmin) {
     return (

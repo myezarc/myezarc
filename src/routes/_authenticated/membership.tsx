@@ -59,6 +59,12 @@ function MembershipPage() {
     note: "",
   });
 
+  useEffect(() => {
+    if (!user?.email) return;
+    setForm((current) => ({ ...current, email: current.email || user.email! }));
+    setNewHoaForm((current) => ({ ...current, email: current.email || user.email! }));
+  }, [user?.email]);
+
   const loadMembership = useCallback(
     async (hoaId: string) => {
       const res = await fetchMembership({ data: { hoaId } });
