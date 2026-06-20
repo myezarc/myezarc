@@ -25,7 +25,7 @@ function AdminMembershipsPage() {
   const decide = useServerFn(decideMembership);
   const decideRequest = useServerFn(decideHoaRequest);
   const setRole = useServerFn(setHoaRole);
-  const { isGlobalAdmin } = useAuth();
+  const { isGlobalAdmin, actingHoaId } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [hoaRequests, setHoaRequests] = useState<HoaRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ function AdminMembershipsPage() {
     setLoading(true);
     try {
       const [data, requests] = await Promise.all([
-        list(),
+        list({ data: { hoaId: actingHoaId || null } }),
         isGlobalAdmin ? listRequests() : Promise.resolve([]),
       ]);
       setRows(data);
@@ -85,7 +85,7 @@ function AdminMembershipsPage() {
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [actingHoaId]);
 
   const onDecide = async (row: Row, status: "approved" | "rejected") => {
     let reason: string | undefined;

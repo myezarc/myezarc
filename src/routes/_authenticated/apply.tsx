@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/apply")({
 });
 
 function ApplyPage() {
-  const { user, isGlobalAdmin } = useAuth();
+  const { user, isGlobalAdmin, roleViewMode, actingHoaId } = useAuth();
   const navigate = useNavigate();
   const ocr = useServerFn(ocrImages);
   const submit = useServerFn(createApplication);
@@ -79,6 +79,8 @@ function ApplyPage() {
           homeownerEmail: email.trim() || null,
           applicationPdfPath: path,
           extractedText: text,
+          actingAs: roleViewMode,
+          actingHoaId: actingHoaId || null,
         },
       });
       navigate({ to: "/applications/$id", params: { id } });

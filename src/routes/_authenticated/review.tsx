@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/review")({
 });
 
 function ReviewQueue() {
-  const { isGlobalAdmin, roleViewMode } = useAuth();
+  const { isGlobalAdmin, roleViewMode, actingHoaId } = useAuth();
   const list = useServerFn(listAllApplications);
   const [items, setItems] = useState<any[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -19,10 +19,10 @@ function ReviewQueue() {
 
   useEffect(() => {
     if (isGlobalAdmin) return;
-    list({ data: { actingAs: roleViewMode } })
+    list({ data: { actingAs: roleViewMode, actingHoaId: actingHoaId || null } })
       .then(setItems)
       .catch((e: any) => setErr(e?.message ?? "Failed to load."));
-  }, [isGlobalAdmin, list, roleViewMode]);
+  }, [actingHoaId, isGlobalAdmin, list, roleViewMode]);
 
   if (isGlobalAdmin) {
     return (

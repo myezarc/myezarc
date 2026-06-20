@@ -11,6 +11,8 @@ export type RoleViewMode = "global_admin" | "hoa_admin" | "arc_reviewer" | "home
 
 const ROLE_VIEW_EMAIL = "mfuyar+globaladminarc@gmail.com";
 const ROLE_VIEW_STORAGE_KEY = "ezarc_role_view_mode";
+const ACTING_HOA_STORAGE_KEY = "ezarc_acting_hoa_id";
+const AUTH_CONTEXT_EVENT = "ezarc-auth-context-change";
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -20,6 +22,7 @@ export function useAuth() {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [hoaRoles, setHoaRoles] = useState<HoaRole[]>([]);
   const [roleViewMode, setRoleViewModeState] = useState<RoleViewMode>("global_admin");
+  const [actingHoaId, setActingHoaIdState] = useState<string>("");
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -79,6 +82,26 @@ export function useAuth() {
     ) {
       setRoleViewModeState(saved);
     }
+    setActingHoaIdState(window.localStorage.getItem(ACTING_HOA_STORAGE_KEY) ?? "");
+
+    const sync = () => {
+      const nextMode = window.localStorage.getItem(ROLE_VIEW_STORAGE_KEY);
+      if (
+        nextMode === "global_admin" ||
+        nextMode === "hoa_admin" ||
+        nextMode === "arc_reviewer" ||
+        nextMode === "homeowner"
+      ) {
+        setRoleViewModeState(nextMode);
+      }
+      setActingHoaIdState(window.localStorage.getItem(ACTING_HOA_STORAGE_KEY) ?? "");
+    };
+    window.addEventListener("storage", sync);
+    window.addEventListener(AUTH_CONTEXT_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(AUTH_CONTEXT_EVENT, sync);
+    };
   }, []);
 
   const rawIsGlobalAdmin = roles.includes("global_admin") || roles.includes("admin");
@@ -101,6 +124,16 @@ export function useAuth() {
     setRoleViewModeState(mode);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(ROLE_VIEW_STORAGE_KEY, mode);
+      window.dispatchEvent(new Event(AUTH_CONTEXT_EVENT));
+    }
+  };
+
+  const setActingHoaId = (hoaId: string) => {
+    setActingHoaIdState(hoaId);
+    if (typeof window !== "undefined") {
+      if (hoaId) window.localStorage.setItem(ACTING_HOA_STORAGE_KEY, hoaId);
+      else window.localStorage.removeItem(ACTING_HOA_STORAGE_KEY);
+      window.dispatchEvent(new Event(AUTH_CONTEXT_EVENT));
     }
   };
 
@@ -117,6 +150,8 @@ export function useAuth() {
     isArcReviewer,
     roleViewMode,
     setRoleViewMode,
+    actingHoaId,
+    setActingHoaId,
     canSwitchRoleView,
   };
 }

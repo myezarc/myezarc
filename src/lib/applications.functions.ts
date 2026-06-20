@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { runArcReview } from "@/lib/arc-review.functions";
 import {
   ensureCanReviewHoa,
+  getHoaOrDefault,
   getSubmissionHoa,
   getUserRoles,
   listReviewableHoas,
@@ -16,10 +17,13 @@ const CreateAppSchema = z.object({
   homeownerEmail: z.string().trim().email().max(255).optional().nullable(),
   applicationPdfPath: z.string().min(1).max(1000),
   extractedText: z.string().min(1).max(400_000),
+  actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+  actingHoaId: z.string().uuid().optional().nullable(),
 });
 const ActingAsSchema = z
   .object({
     actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+    actingHoaId: z.string().uuid().optional().nullable(),
   })
   .optional()
   .default({});
@@ -27,6 +31,7 @@ const ActingAsSchema = z
 const IdSchema = z.object({
   id: z.string().uuid(),
   actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+  actingHoaId: z.string().uuid().optional().nullable(),
 });
 
 const FinalizeSchema = z.object({
@@ -35,6 +40,7 @@ const FinalizeSchema = z.object({
   decision: z.enum(["approved", "conditional", "rejected"]),
   homeownerMessage: z.string().trim().min(1).max(8000),
   actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+  actingHoaId: z.string().uuid().optional().nullable(),
 });
 
 type ActingAs = z.infer<typeof ActingAsSchema>["actingAs"];
@@ -74,7 +80,11 @@ export const createApplication = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateAppSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const hoa = await getSubmissionHoa(supabase, userId);
+    const roles = await getUserRoles(supabase, userId);
+    const hoa =
+      data.actingAs === "homeowner" && data.actingHoaId && isGlobalAdminRole(roles)
+        ? await getHoaOrDefault(supabase, data.actingHoaId)
+        : await getSubmissionHoa(supabase, userId);
     const { data: row, error } = await supabase
       .from("applications")
       .insert({
@@ -111,6 +121,7 @@ export const listAllApplications = createServerFn({ method: "GET" })
   .handler(async ({ data: input, context }) => {
     const { supabase, userId } = context;
     const actingAs = input?.actingAs;
+    const actingHoaId = input?.actingHoaId;
     const isActingReviewer = await isGlobalAdminActingAsReviewer(supabase, userId, actingAs);
     const reviewableHoas = isActingReviewer ? [] : await listReviewableHoas(supabase, userId);
     if (!isActingReviewer && reviewableHoas.length === 0)
@@ -126,6 +137,7 @@ export const listAllApplications = createServerFn({ method: "GET" })
         reviewableHoas.map((hoa) => hoa.id),
       );
     }
+    if (actingHoaId) query = query.eq("hoa_id", actingHoaId);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return data ?? [];

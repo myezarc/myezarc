@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { BookOpen, FileText, Download, Loader2, AlertTriangle } from "lucide-react";
 import { getMemberResources } from "@/lib/resources.functions";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/resources")({
   head: () => ({ meta: [{ title: "Resources — Ez-ARC" }] }),
@@ -11,14 +12,17 @@ export const Route = createFileRoute("/_authenticated/resources")({
 
 function ResourcesPage() {
   const get = useServerFn(getMemberResources);
+  const { roleViewMode, actingHoaId } = useAuth();
   const [data, setData] = useState<Awaited<ReturnType<typeof getMemberResources>> | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    get()
+    setData(null);
+    setErr(null);
+    get({ data: { hoaId: actingHoaId || null, actingAs: roleViewMode } })
       .then(setData)
       .catch((e: any) => setErr(e?.message ?? "Failed"));
-  }, []);
+  }, [actingHoaId, get, roleViewMode]);
 
   return (
     <div className="max-w-3xl">

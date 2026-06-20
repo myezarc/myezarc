@@ -36,6 +36,10 @@ const HoaInputSchema = z
   .object({ hoaId: z.string().uuid().optional().nullable() })
   .optional()
   .default({});
+const AdminHoaInputSchema = z
+  .object({ hoaId: z.string().uuid().optional().nullable() })
+  .optional()
+  .default({});
 
 export const getMyMembership = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -175,15 +179,19 @@ export const submitHoaRequest = createServerFn({ method: "POST" })
 
 export const listMemberships = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: unknown) => AdminHoaInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
     const manageableHoas = await listManageableHoas(context.supabase, context.userId);
-    if (manageableHoas.length === 0) throw new Error("HOA admin access required");
+    const scopedHoas = data?.hoaId
+      ? manageableHoas.filter((hoa) => hoa.id === data.hoaId)
+      : manageableHoas;
+    if (scopedHoas.length === 0) throw new Error("HOA admin access required");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let query = supabaseAdmin
       .from("hoa_memberships")
       .select("*,hoa:hoas(id,name,slug)")
       .order("created_at", { ascending: false });
-    const hoaIds = manageableHoas.map((hoa) => hoa.id);
+    const hoaIds = scopedHoas.map((hoa) => hoa.id);
     if (hoaIds.length > 0) query = query.in("hoa_id", hoaIds);
     const { data: memberships, error } = await query;
     if (error) throw new Error(error.message);

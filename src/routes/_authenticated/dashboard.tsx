@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
-  const { user, isStaff, isAdmin, isGlobalAdmin, roles } = useAuth();
+  const { user, isStaff, isAdmin, isGlobalAdmin, roles, actingHoaId } = useAuth();
   const navigate = useNavigate();
   const { status: memberStatus, hoa, loading: membershipLoading } = useMembership();
   const hoaName = hoa?.name ?? "HOA";
@@ -35,6 +35,7 @@ function Dashboard() {
   const [hasGuideline, setHasGuideline] = useState<boolean | null>(null);
   const [adminCount, setAdminCount] = useState<number | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
+  const [actingHoaName, setActingHoaName] = useState<string | null>(null);
   const claim = useServerFn(claimFirstAdmin);
   const fetchAdminCount = useServerFn(getAdminCount);
   const [claiming, setClaiming] = useState(false);
@@ -68,27 +69,43 @@ function Dashboard() {
         .eq("homeowner_id", user.id);
       let queue = 0;
       if (isStaff) {
-        const { count } = await supabase
+        let query = supabase
           .from("applications")
           .select("*", { count: "exact", head: true })
           .in("status", ["submitted", "in_review"]);
+        if (actingHoaId) query = query.eq("hoa_id", actingHoaId);
+        const { count } = await query;
         queue = count ?? 0;
       }
       let pendingMembers = 0;
       if (isAdmin) {
-        const { count: pm } = await supabase
+        let query = supabase
           .from("hoa_memberships")
           .select("*", { count: "exact", head: true })
           .eq("status", "pending");
+        if (actingHoaId) query = query.eq("hoa_id", actingHoaId);
+        const { count: pm } = await query;
         pendingMembers = pm ?? 0;
       }
       setStats({ mine: mine ?? 0, queue, pendingMembers });
-      const { data: g } = await supabase
+      let guidelineQuery = supabase
         .from("hoa_guidelines")
         .select("id")
         .eq("is_active", true)
         .limit(1);
+      if (actingHoaId) guidelineQuery = guidelineQuery.eq("hoa_id", actingHoaId);
+      const { data: g } = await guidelineQuery;
       setHasGuideline((g ?? []).length > 0);
+      if (actingHoaId) {
+        const { data: selectedHoa } = await supabase
+          .from("hoas")
+          .select("name")
+          .eq("id", actingHoaId)
+          .maybeSingle();
+        setActingHoaName(selectedHoa?.name ?? null);
+      } else {
+        setActingHoaName(null);
+      }
       const ac = await fetchAdminCount();
       setAdminCount(ac);
       const { data: prof } = await supabase
@@ -98,7 +115,7 @@ function Dashboard() {
         .maybeSingle();
       setFullName(prof?.full_name ?? null);
     })();
-  }, [user, isStaff, isAdmin]);
+  }, [actingHoaId, user, isStaff, isAdmin]);
 
   const handleClaim = async () => {
     setClaiming(true);
@@ -140,6 +157,11 @@ function Dashboard() {
               Current view
             </p>
             <p className="mt-0.5 text-sm font-bold text-brand">{roleLabel}</p>
+            {actingHoaName && !isGlobalAdmin && (
+              <p className="mt-1 max-w-[220px] truncate text-xs font-semibold text-accent">
+                {actingHoaName}
+              </p>
+            )}
             {roles.length > 1 && (
               <p className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground">
                 {roles.join(", ")}

@@ -8,6 +8,7 @@ import { uploadGuideline, getActiveGuideline } from "@/lib/guidelines.functions"
 import { uploadArcForm, getActiveArcForm } from "@/lib/resources.functions";
 import { listAdminHoas } from "@/lib/membership.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/admin/guidelines")({
   head: () => ({ meta: [{ title: "HOA Guidelines — Ez-ARC" }] }),
@@ -19,6 +20,7 @@ function GuidelinesAdmin() {
   const upload = useServerFn(uploadGuideline);
   const get = useServerFn(getActiveGuideline);
   const fetchHoas = useServerFn(listAdminHoas);
+  const { actingHoaId, setActingHoaId } = useAuth();
 
   const [active, setActive] = useState<any>(null);
   const [hoas, setHoas] = useState<Array<{ id: string; name: string }>>([]);
@@ -41,9 +43,10 @@ function GuidelinesAdmin() {
     (async () => {
       const rows = await fetchHoas();
       setHoas(rows);
-      const first = rows[0];
+      const first = rows.find((hoa) => hoa.id === actingHoaId) ?? rows[0];
       if (first) {
         setSelectedHoaId(first.id);
+        if (!actingHoaId) setActingHoaId(first.id);
         await reload(first.id);
       }
     })();
@@ -52,6 +55,10 @@ function GuidelinesAdmin() {
   useEffect(() => {
     reload();
   }, [selectedHoaId]);
+
+  useEffect(() => {
+    if (actingHoaId && actingHoaId !== selectedHoaId) setSelectedHoaId(actingHoaId);
+  }, [actingHoaId, selectedHoaId]);
 
   const submit = async () => {
     setErr(null);
@@ -123,7 +130,10 @@ function GuidelinesAdmin() {
           </span>
           <select
             value={selectedHoaId}
-            onChange={(e) => setSelectedHoaId(e.target.value)}
+            onChange={(e) => {
+              setSelectedHoaId(e.target.value);
+              setActingHoaId(e.target.value);
+            }}
             className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-accent"
           >
             {hoas.map((hoa) => (

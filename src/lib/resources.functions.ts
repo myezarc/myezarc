@@ -1,12 +1,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ensureCanManageHoa, getHoaOrDefault, getReadableHoa } from "@/lib/hoa-scope";
+import {
+  ensureCanManageHoa,
+  getHoaOrDefault,
+  getReadableHoa,
+  getUserRoles,
+  isGlobalAdminRole,
+} from "@/lib/hoa-scope";
+
+const ResourceInputSchema = z
+  .object({
+    hoaId: z.string().uuid().optional().nullable(),
+    actingAs: z.enum(["global_admin", "hoa_admin", "arc_reviewer", "homeowner"]).optional(),
+  })
+  .optional()
+  .default({});
 
 export const getMemberResources = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const hoa = await getReadableHoa(context.supabase, context.userId);
+  .inputValidator((input: unknown) => ResourceInputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const roles = await getUserRoles(context.supabase, context.userId);
+    const hoa =
+      data?.hoaId && data.actingAs !== "global_admin" && isGlobalAdminRole(roles)
+        ? await getHoaOrDefault(context.supabase, data.hoaId)
+        : await getReadableHoa(context.supabase, context.userId, data?.hoaId);
     const [{ data: g }, { data: f }] = await Promise.all([
       context.supabase
         .from("hoa_guidelines")

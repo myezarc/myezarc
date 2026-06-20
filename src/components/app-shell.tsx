@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   LogOut,
   Home,
@@ -24,11 +25,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     canSwitchRoleView,
     roleViewMode,
     setRoleViewMode,
+    actingHoaId,
+    setActingHoaId,
   } = useAuth();
+  const [hoas, setHoas] = useState<Array<{ id: string; name: string }>>([]);
   const router = useRouter();
   const navigate = useNavigate();
   const showHomeownerTools = !isGlobalAdmin;
   const showHoaStaffTools = !isGlobalAdmin;
+  const showActingHoaSelect = canSwitchRoleView && roleViewMode !== "global_admin";
+
+  useEffect(() => {
+    if (!canSwitchRoleView) return;
+    let cancelled = false;
+    supabase
+      .from("hoas")
+      .select("id,name")
+      .order("name", { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const rows = data ?? [];
+        setHoas(rows);
+        if (!actingHoaId && rows[0]) setActingHoaId(rows[0].id);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canSwitchRoleView, actingHoaId, setActingHoaId]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -49,6 +72,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex min-w-0 items-center gap-3">
             {canSwitchRoleView && (
               <RoleViewSelect value={roleViewMode} onChange={setRoleViewMode} />
+            )}
+            {showActingHoaSelect && (
+              <ActingHoaSelect
+                value={actingHoaId}
+                hoas={hoas}
+                onChange={setActingHoaId}
+              />
             )}
             <span className="hidden max-w-[220px] truncate text-sm text-muted-foreground md:inline xl:max-w-xs">
               {user?.email}
@@ -106,6 +136,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-12">{children}</main>
     </div>
+  );
+}
+
+function ActingHoaSelect({
+  value,
+  hoas,
+  onChange,
+}: {
+  value: string;
+  hoas: Array<{ id: string; name: string }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="hidden shrink-0 items-center gap-2 text-xs font-semibold text-muted-foreground lg:inline-flex">
+      HOA
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="max-w-[220px] rounded-lg border border-border bg-background px-2 py-1.5 text-xs font-semibold text-brand outline-none focus:border-accent"
+      >
+        {hoas.length === 0 && <option value="">No HOA</option>}
+        {hoas.map((hoa) => (
+          <option key={hoa.id} value={hoa.id}>
+            {hoa.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
