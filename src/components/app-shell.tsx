@@ -59,6 +59,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     navigate({ to: "/auth" });
   };
 
+  const changeRoleView = (mode: RoleViewMode) => {
+    setRoleViewMode(mode);
+    const target =
+      mode === "global_admin"
+        ? "/admin/hoas"
+        : mode === "hoa_admin"
+          ? "/admin/memberships"
+          : mode === "arc_reviewer"
+            ? "/review"
+            : "/dashboard";
+    navigate({ to: target });
+  };
+
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
       <header className="border-b border-border bg-background">
@@ -71,7 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="flex min-w-0 items-center gap-3">
             {canSwitchRoleView && (
-              <RoleViewSelect value={roleViewMode} onChange={setRoleViewMode} />
+              <RoleViewSelect value={roleViewMode} onChange={changeRoleView} />
             )}
             {showActingHoaSelect && (
               <ActingHoaSelect
