@@ -9,7 +9,6 @@ import {
   BookOpen,
   UserCheck,
   FolderDown,
-  Github,
   Building2,
 } from "lucide-react";
 import { type RoleViewMode, useAuth } from "@/hooks/use-auth";
@@ -83,7 +82,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/admin/guidelines" icon={BookOpen} label="Guidelines" />
           )}
           {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
-          <NavLink to="/github-setup" icon={Github} label="GitHub" />
         </nav>
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-6 pb-3 md:hidden">
           <NavLink to="/dashboard" icon={Home} label="Home" />
@@ -104,7 +102,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <NavLink to="/admin/guidelines" icon={BookOpen} label="Guide" />
           )}
           {isGlobalAdmin && <NavLink to="/admin/users" icon={Users} label="Users" />}
-          <NavLink to="/github-setup" icon={Github} label="GitHub" />
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 md:px-8 md:py-12">{children}</main>
