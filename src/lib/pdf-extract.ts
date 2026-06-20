@@ -5,6 +5,37 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
+function installReadableStreamValuesPolyfill() {
+  const proto = globalThis.ReadableStream?.prototype as
+    | (ReadableStream<unknown> & {
+        values?: (options?: { preventCancel?: boolean }) => AsyncIterableIterator<unknown>;
+        [Symbol.asyncIterator]?: () => AsyncIterableIterator<unknown>;
+      })
+    | undefined;
+  if (!proto || proto.values) return;
+
+  proto.values = async function* (this: ReadableStream<unknown>, options = {}) {
+    const reader = this.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        yield value;
+      }
+    } finally {
+      reader.releaseLock();
+      if (!options.preventCancel) {
+        await this.cancel().catch(() => {});
+      }
+    }
+  };
+  proto[Symbol.asyncIterator] = function (this: ReadableStream<unknown>) {
+    return this.values();
+  };
+}
+
+installReadableStreamValuesPolyfill();
+
 export async function extractPdfText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;

@@ -11,9 +11,27 @@ export async function extractTextFromFile(
 ): Promise<string> {
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   if (isPdf) {
-    const text = await extractPdfText(file);
+    let text = "";
+    let extractError: unknown = null;
+    try {
+      text = await extractPdfText(file);
+    } catch (error) {
+      extractError = error;
+    }
     if (isExtractedTextRich(text)) return text;
-    const images = await renderPdfToImages(file);
+    let images: string[] = [];
+    try {
+      images = await renderPdfToImages(file);
+    } catch (error) {
+      if (text.trim()) return text;
+      const message =
+        error instanceof Error
+          ? error.message
+          : extractError instanceof Error
+            ? extractError.message
+            : "This browser could not read the PDF.";
+      throw new Error(`Could not read this PDF. Try another browser or re-save the PDF. ${message}`);
+    }
     if (images.length === 0) return text;
     return await ocrAllPages(ocr, images, label);
   }
