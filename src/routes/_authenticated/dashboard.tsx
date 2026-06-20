@@ -46,6 +46,7 @@ function Dashboard() {
       : isStaff
         ? "ARC Reviewer"
         : "Home Owner";
+  const showHomeownerTools = !isGlobalAdmin && !isStaff;
   const showHomeownerHoa = !isGlobalAdmin && !isStaff && memberStatus === "approved";
 
   useEffect(() => {
@@ -217,7 +218,7 @@ function Dashboard() {
       )}
 
       <div className="grid gap-5 md:grid-cols-3">
-        {!isGlobalAdmin && (
+        {showHomeownerTools && (
           <Card
             to="/apply"
             icon={FileText}
@@ -229,7 +230,7 @@ function Dashboard() {
             }
           />
         )}
-        {!isGlobalAdmin && (
+        {showHomeownerTools && (
           <Card
             to="/applications"
             icon={ClipboardList}

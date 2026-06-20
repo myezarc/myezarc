@@ -18,28 +18,30 @@ export const Route = createFileRoute("/_authenticated/applications")({
 });
 
 function ApplicationsList() {
-  const { isGlobalAdmin } = useAuth();
+  const { isGlobalAdmin, isStaff } = useAuth();
   const list = useServerFn(listMyApplications);
   const [items, setItems] = useState<any[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isGlobalAdmin) return;
+    if (isGlobalAdmin || isStaff) return;
     list()
       .then(setItems)
       .catch((e: any) => setErr(e?.message ?? "Failed to load."));
-  }, [isGlobalAdmin, list]);
+  }, [isGlobalAdmin, isStaff, list]);
 
-  if (isGlobalAdmin) {
+  if (isGlobalAdmin || isStaff) {
     return (
       <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
         <div className="mb-3 grid size-10 place-items-center rounded-xl bg-accent/10 text-accent">
           <AlertTriangle className="size-5" />
         </div>
-        <h1 className="font-display text-2xl font-bold text-brand">Global Admin umbrella account</h1>
+        <h1 className="font-display text-2xl font-bold text-brand">
+          Home Owner view required
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Global Admins see platform-level HOA activity and do not have a homeowner application
-          list.
+          Switch to Home Owner to submit and view your own ARC applications. Reviewer and HOA Admin
+          modes use the Review queue and admin tools.
         </p>
       </div>
     );

@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/apply")({
 });
 
 function ApplyPage() {
-  const { user, isGlobalAdmin, roleViewMode, actingHoaId } = useAuth();
+  const { user, isGlobalAdmin, isStaff, roleViewMode, actingHoaId } = useAuth();
   const navigate = useNavigate();
   const ocr = useServerFn(ocrImages);
   const submit = useServerFn(createApplication);
@@ -39,16 +39,16 @@ function ApplyPage() {
     setEmail((current) => current || user.email!);
   }, [user?.email]);
 
-  if (isGlobalAdmin) {
+  if (isGlobalAdmin || isStaff) {
     return (
       <div className="max-w-2xl rounded-2xl border border-border bg-surface p-6">
         <div className="mb-3 grid size-10 place-items-center rounded-xl bg-accent/10 text-accent">
           <AlertTriangle className="size-5" />
         </div>
-        <h1 className="font-display text-2xl font-bold text-brand">Global Admin umbrella account</h1>
+        <h1 className="font-display text-2xl font-bold text-brand">Home Owner view required</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Global Admins oversee HOA accounts and review operations across the platform. They do not
-          submit homeowner ARC applications.
+          Switch to Home Owner to submit an ARC application. Reviewer and HOA Admin modes use the
+          Review queue and admin tools.
         </p>
       </div>
     );

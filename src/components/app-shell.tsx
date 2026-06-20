@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [hoas, setHoas] = useState<Array<{ id: string; name: string }>>([]);
   const router = useRouter();
   const navigate = useNavigate();
-  const showHomeownerTools = !isGlobalAdmin;
+  const showHomeownerTools = !isGlobalAdmin && !isStaff;
   const showHoaStaffTools = !isGlobalAdmin;
   const showActingHoaSelect = canSwitchRoleView && roleViewMode !== "global_admin";
 
